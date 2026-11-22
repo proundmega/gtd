@@ -12,11 +12,14 @@ import {
   reactivateCalendarItem,
 } from './calendar.js';
 import {
+  ACTION_ENERGIES,
+  ACTION_PRIORITIES,
   completeAction,
   countOpenActions,
   filterActionsByContext,
   resolveProjectName,
   sortActionsNewestFirst,
+  updateActionPlanning,
 } from './actions.js';
 import {
   buildReviewChecklist,
@@ -29,6 +32,7 @@ const store = createStore();
 const app = document.querySelector('#app');
 let clarifyItemId = null;
 let actionsContext = 'all';
+let planningActionId = null;
 
 function escapeHtml(value) {
   return String(value)
@@ -50,6 +54,12 @@ function formatDate(value) {
   const date = new Date(`${value}T00:00:00`);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString(undefined, { dateStyle: 'medium' });
+}
+
+function renderOptions(values, selected) {
+  return values.map((value) => (
+    `<option value="${escapeHtml(value)}"${value === selected ? ' selected' : ''}>${escapeHtml(value)}</option>`
+  )).join('');
 }
 
 function renderClarifyPanel(state, item) {
@@ -144,6 +154,24 @@ function renderActions(state) {
       ? `<ul class="action-list">
           ${visibleActions.map((action) => {
             const projectName = resolveProjectName(action.projectId, state.projects);
+            const priority = action.priority ?? 'medium';
+            const energy = action.energy ?? 'medium';
+            const timeMinutes = action.timeMinutes ?? 15;
+            const planningForm = planningActionId === action.id
+              ? `<form class="action-planning" data-item-id="${escapeHtml(action.id)}">
+                  <label>Priority
+                    <select name="priority">${renderOptions(ACTION_PRIORITIES, priority)}</select>
+                  </label>
+                  <label>Energy
+                    <select name="energy">${renderOptions(ACTION_ENERGIES, energy)}</select>
+                  </label>
+                  <label>Time (minutes)
+                    <input name="timeMinutes" type="number" min="1" step="1" value="${escapeHtml(timeMinutes)}">
+                  </label>
+                  <button type="submit">Save</button>
+                  <button type="button" class="cancel-plan">Cancel</button>
+                </form>`
+              : '';
             return `
               <li class="action-item">
                 <div class="action-main">
@@ -151,10 +179,17 @@ function renderActions(state) {
                   <p class="action-meta">
                     <span class="action-context">${escapeHtml(action.context)}</span>
                     ${projectName ? `<span class="action-project">${escapeHtml(projectName)}</span>` : ''}
+                    <span class="action-priority">Priority: ${escapeHtml(priority)}</span>
+                    <span class="action-energy">Energy: ${escapeHtml(energy)}</span>
+                    <span class="action-duration">${escapeHtml(timeMinutes)} min</span>
                     <time class="action-time" datetime="${escapeHtml(action.createdAt)}">${escapeHtml(formatTimestamp(action.createdAt))}</time>
                   </p>
+                  ${planningForm}
                 </div>
-                <button type="button" class="complete" data-item-id="${escapeHtml(action.id)}">Complete</button>
+                <div class="action-controls">
+                  <button type="button" class="plan" data-item-id="${escapeHtml(action.id)}">Plan/Edit</button>
+                  <button type="button" class="complete" data-item-id="${escapeHtml(action.id)}">Complete</button>
+                </div>
               </li>
             `;
           }).join('')}
@@ -535,9 +570,37 @@ function render() {
       render();
     });
     view.addEventListener('click', (event) => {
+      const planButton = event.target.closest('button.plan');
+      if (planButton) {
+        planningActionId = planningActionId === planButton.dataset.itemId
+          ? null
+          : planButton.dataset.itemId;
+        render();
+        return;
+      }
+
+      const cancelPlanButton = event.target.closest('button.cancel-plan');
+      if (cancelPlanButton) {
+        planningActionId = null;
+        render();
+        return;
+      }
+
       const completeButton = event.target.closest('button.complete');
       if (completeButton) {
         completeAction(store, completeButton.dataset.itemId);
+        render();
+      }
+    });
+    view.addEventListener('submit', (event) => {
+      if (!event.target.matches('form.action-planning')) return;
+      event.preventDefault();
+      const form = event.target;
+      const priority = form.querySelector('[name="priority"]').value;
+      const energy = form.querySelector('[name="energy"]').value;
+      const timeMinutes = Number(form.querySelector('[name="timeMinutes"]').value);
+      if (updateActionPlanning(store, form.dataset.itemId, { priority, energy, timeMinutes })) {
+        planningActionId = null;
         render();
       }
     });
