@@ -2,6 +2,7 @@ import { createStore } from './store.js';
 import { addInboxItem, sortInboxNewestFirst } from './inbox.js';
 import { clarifyToNextAction, trashInboxItem } from './clarify.js';
 import { clarifyToProject, countOpenProjectActions } from './projects.js';
+import { clarifyToWaiting, markWaitingReceived, countOpenWaiting } from './waiting.js';
 
 const store = createStore();
 const app = document.querySelector('#app');
@@ -22,6 +23,13 @@ function formatTimestamp(iso) {
   return date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
+function formatDate(value) {
+  if (!value) return 'No follow-up date';
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString(undefined, { dateStyle: 'medium' });
+}
+
 function renderClarifyPanel(state, item) {
   const options = state.settings.contexts
     .map((context) => `<option value="${escapeHtml(context)}">${escapeHtml(context)}</option>`)
@@ -40,9 +48,14 @@ function renderClarifyPanel(state, item) {
           <option value="">Choose a context&hellip;</option>
           ${options}
         </select>
+        <label for="clarify-person">Waiting on</label>
+        <input id="clarify-person" name="person" type="text" placeholder="Who are you waiting on?" autocomplete="off">
+        <label for="clarify-follow-up">Follow-up date (optional)</label>
+        <input id="clarify-follow-up" name="followUpDate" type="date">
         <div class="clarify-actions">
           <button type="submit">Next Action</button>
           <button type="button" class="project" data-item-id="${escapeHtml(item.id)}">Project</button>
+          <button type="button" class="waiting" data-item-id="${escapeHtml(item.id)}">Waiting For</button>
           <button type="button" class="trash" data-item-id="${escapeHtml(item.id)}">Trash</button>
         </div>
       </form>
@@ -121,6 +134,39 @@ function renderProjects(state) {
   `;
 }
 
+function renderWaiting(state) {
+  const items = [...state.waiting].sort((a, b) => {
+    const aTime = Date.parse(a.createdAt) || 0;
+    const bTime = Date.parse(b.createdAt) || 0;
+    return bTime - aTime;
+  });
+
+  const list = items.length
+    ? `<ul class="waiting-list">
+        ${items.map((item) => `
+          <li class="waiting-item">
+            <div class="waiting-main">
+              <h3 class="waiting-title">${escapeHtml(item.title)}</h3>
+              <p class="waiting-person">Waiting on: ${escapeHtml(item.person)}</p>
+            </div>
+            <span class="waiting-meta">
+              <span class="waiting-follow-up">Follow up: ${escapeHtml(formatDate(item.followUpDate))}</span>
+              <span class="waiting-status">${escapeHtml(item.status)}</span>
+              ${item.status === 'waiting' ? `<button type="button" class="received" data-item-id="${escapeHtml(item.id)}">Received</button>` : ''}
+            </span>
+          </li>
+        `).join('')}
+      </ul>`
+    : '<p class="empty">No waiting-for items yet. Clarify an inbox item into Waiting For to get started.</p>';
+
+  return `
+    <section class="waiting" aria-labelledby="waiting-heading">
+      <h2 id="waiting-heading">Waiting For</h2>
+      ${list}
+    </section>
+  `;
+}
+
 function render() {
   const state = store.getState();
   const section = window.location.hash.slice(1) || 'inbox';
@@ -132,6 +178,7 @@ function render() {
         <a href="#inbox"${section === 'inbox' ? ' aria-current="page"' : ''}>Inbox (${state.inbox.length})</a>
         <a href="#actions"${section === 'actions' ? ' aria-current="page"' : ''}>Next Actions (${state.actions.length})</a>
         <a href="#projects"${section === 'projects' ? ' aria-current="page"' : ''}>Projects (${state.projects.length})</a>
+        <a href="#waiting"${section === 'waiting' ? ' aria-current="page"' : ''}>Waiting For (${countOpenWaiting(state.waiting)})</a>
         <a href="#review"${section === 'review' ? ' aria-current="page"' : ''}>Weekly Review</a>
       </nav>
     </header>
@@ -175,6 +222,18 @@ function render() {
         trashInboxItem(store, trashButton.dataset.itemId);
         clarifyItemId = null;
         render();
+        return;
+      }
+
+      const waitingButton = event.target.closest('button.waiting');
+      if (waitingButton) {
+        const form = waitingButton.closest('#clarify-form');
+        const person = form.querySelector('#clarify-person').value;
+        const followUpDate = form.querySelector('#clarify-follow-up').value;
+        if (clarifyToWaiting(store, waitingButton.dataset.itemId, person, followUpDate)) {
+          clarifyItemId = null;
+        }
+        render();
       }
     });
 
@@ -191,6 +250,15 @@ function render() {
     }
   } else if (section === 'projects') {
     view.innerHTML = renderProjects(state);
+  } else if (section === 'waiting') {
+    view.innerHTML = renderWaiting(state);
+    view.addEventListener('click', (event) => {
+      const receivedButton = event.target.closest('button.received');
+      if (receivedButton) {
+        markWaitingReceived(store, receivedButton.dataset.itemId);
+        render();
+      }
+    });
   } else {
     view.innerHTML = '<p class="empty">Your GTD workspace is ready. Capture something to get started.</p>';
   }
