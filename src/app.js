@@ -1,7 +1,14 @@
 import { createStore } from './store.js';
 import { addInboxItem, sortInboxNewestFirst } from './inbox.js';
 import { clarifyToNextAction, trashInboxItem } from './clarify.js';
-import { clarifyToProject, countOpenProjectActions } from './projects.js';
+import {
+  PROJECT_PLANNING_STEPS,
+  clarifyToProject,
+  countOpenProjectActions,
+  countProjectPlanningSteps,
+  normalizeProjectPlanning,
+  updateProjectPlanning,
+} from './projects.js';
 import {
   addArea,
   assignProjectToArea,
@@ -50,6 +57,7 @@ const app = document.querySelector('#app');
 let clarifyItemId = null;
 let actionsContext = 'all';
 let planningActionId = null;
+let planningProjectId = null;
 let engageContext = 'all';
 let engageEnergy = 'any';
 let engageTime = 'any';
@@ -436,16 +444,34 @@ function renderProjects(state) {
           const areaOptions = state.areas.map((area) => (
             `<option value="${escapeHtml(area.id)}"${area.id === project.areaId ? ' selected' : ''}>${escapeHtml(area.name)}</option>`
           )).join('');
+          const planning = normalizeProjectPlanning(project.planning);
+          const planningCount = countProjectPlanningSteps(project);
+          const planningForm = planningProjectId === project.id
+            ? `<form class="project-planning-form" data-item-id="${escapeHtml(project.id)}">
+                <p class="project-planning-completion">${planningCount}/${PROJECT_PLANNING_STEPS.length} steps filled</p>
+                ${PROJECT_PLANNING_STEPS.map((step) => `
+                  <label for="project-${escapeHtml(project.id)}-${escapeHtml(step.key)}">${escapeHtml(step.label)}</label>
+                  <textarea id="project-${escapeHtml(project.id)}-${escapeHtml(step.key)}" name="${escapeHtml(step.key)}" rows="2" placeholder="${escapeHtml(step.placeholder)}">${escapeHtml(planning[step.key])}</textarea>
+                `).join('')}
+                <div class="project-planning-actions">
+                  <button type="submit">Save Plan</button>
+                  <button type="button" class="cancel-project-plan">Cancel</button>
+                </div>
+              </form>`
+            : '';
           return `
             <li class="project-item">
               <div class="project-main">
                 <h3 class="project-title">${escapeHtml(project.title)}</h3>
                 <p class="project-outcome">${escapeHtml(project.outcome)}</p>
                 <p class="project-area">Area: ${areaName ? escapeHtml(areaName) : 'No area'}</p>
+                ${planningForm}
               </div>
               <span class="project-meta">
                 <span class="project-status">${escapeHtml(project.status)}</span>
                 <span class="project-open-actions">${openActions} open action${openActions === 1 ? '' : 's'}</span>
+                <span class="project-planning-count">${planningCount}/${PROJECT_PLANNING_STEPS.length} steps filled</span>
+                <button type="button" class="plan-project" data-item-id="${escapeHtml(project.id)}">Plan</button>
                 <label class="project-area-label" for="project-area-${escapeHtml(project.id)}">Assign area</label>
                 <select id="project-area-${escapeHtml(project.id)}" class="project-area-select" data-item-id="${escapeHtml(project.id)}">
                   <option value=""${project.areaId ? '' : ' selected'}>No area</option>
@@ -858,6 +884,35 @@ function render() {
         assignProjectToArea(store, select.dataset.itemId, select.value);
         render();
       }
+    });
+    view.addEventListener('click', (event) => {
+      const planButton = event.target.closest('button.plan-project');
+      if (planButton) {
+        planningProjectId = planningProjectId === planButton.dataset.itemId
+          ? null
+          : planButton.dataset.itemId;
+        render();
+        return;
+      }
+
+      const cancelPlanButton = event.target.closest('button.cancel-project-plan');
+      if (cancelPlanButton) {
+        planningProjectId = null;
+        render();
+      }
+    });
+    view.addEventListener('submit', (event) => {
+      if (!event.target.matches('form.project-planning-form')) return;
+      event.preventDefault();
+      const form = event.target;
+      const planning = {};
+      PROJECT_PLANNING_STEPS.forEach((step) => {
+        planning[step.key] = form.querySelector(`[name="${step.key}"]`).value;
+      });
+      if (updateProjectPlanning(store, form.dataset.itemId, planning)) {
+        planningProjectId = null;
+      }
+      render();
     });
   } else if (section === 'areas') {
     view.innerHTML = renderAreas(state);
