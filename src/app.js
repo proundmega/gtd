@@ -5,10 +5,18 @@ import { clarifyToProject, countOpenProjectActions } from './projects.js';
 import { clarifyToWaiting, markWaitingReceived, countOpenWaiting } from './waiting.js';
 import { clarifyToSomeday, activateSomedayItem, countOpenSomeday } from './someday.js';
 import { clarifyToReference, countReference } from './reference.js';
+import {
+  completeAction,
+  countOpenActions,
+  filterActionsByContext,
+  resolveProjectName,
+  sortActionsNewestFirst,
+} from './actions.js';
 
 const store = createStore();
 const app = document.querySelector('#app');
 let clarifyItemId = null;
+let actionsContext = 'all';
 
 function escapeHtml(value) {
   return String(value)
@@ -100,6 +108,52 @@ function renderInbox(state) {
         </div>
       </form>
       ${clarifyItem ? renderClarifyPanel(state, clarifyItem) : ''}
+      ${list}
+    </section>
+  `;
+}
+
+function renderActions(state) {
+  const openActions = state.actions.filter((action) => action.status === 'active');
+  const visibleActions = sortActionsNewestFirst(filterActionsByContext(openActions, actionsContext));
+
+  const contextOptions = [
+    `<option value="all"${actionsContext === 'all' ? ' selected' : ''}>All contexts</option>`,
+    ...state.settings.contexts.map((context) => (
+      `<option value="${escapeHtml(context)}"${actionsContext === context ? ' selected' : ''}>${escapeHtml(context)}</option>`
+    )),
+  ].join('');
+
+  const list = openActions.length
+    ? (visibleActions.length
+      ? `<ul class="action-list">
+          ${visibleActions.map((action) => {
+            const projectName = resolveProjectName(action.projectId, state.projects);
+            return `
+              <li class="action-item">
+                <div class="action-main">
+                  <h3 class="action-title">${escapeHtml(action.title)}</h3>
+                  <p class="action-meta">
+                    <span class="action-context">${escapeHtml(action.context)}</span>
+                    ${projectName ? `<span class="action-project">${escapeHtml(projectName)}</span>` : ''}
+                    <time class="action-time" datetime="${escapeHtml(action.createdAt)}">${escapeHtml(formatTimestamp(action.createdAt))}</time>
+                  </p>
+                </div>
+                <button type="button" class="complete" data-item-id="${escapeHtml(action.id)}">Complete</button>
+              </li>
+            `;
+          }).join('')}
+        </ul>`
+      : '<p class="empty">No open actions in this context.</p>')
+    : '<p class="empty">No open actions yet. Clarify an inbox item into a Next Action to get started.</p>';
+
+  return `
+    <section class="actions" aria-labelledby="actions-heading">
+      <h2 id="actions-heading">Next Actions</h2>
+      <div class="context-filter">
+        <label for="action-context-filter">Context</label>
+        <select id="action-context-filter">${contextOptions}</select>
+      </div>
       ${list}
     </section>
   `;
@@ -256,7 +310,7 @@ function render() {
       <h1>GTD Planner</h1>
       <nav aria-label="GTD sections">
         <a href="#inbox"${section === 'inbox' ? ' aria-current="page"' : ''}>Inbox (${state.inbox.length})</a>
-        <a href="#actions"${section === 'actions' ? ' aria-current="page"' : ''}>Next Actions (${state.actions.length})</a>
+        <a href="#actions"${section === 'actions' ? ' aria-current="page"' : ''}>Next Actions (${countOpenActions(state.actions)})</a>
         <a href="#projects"${section === 'projects' ? ' aria-current="page"' : ''}>Projects (${state.projects.length})</a>
         <a href="#waiting"${section === 'waiting' ? ' aria-current="page"' : ''}>Waiting For (${countOpenWaiting(state.waiting)})</a>
         <a href="#someday"${section === 'someday' ? ' aria-current="page"' : ''}>Someday/Maybe (${countOpenSomeday(state.someday)})</a>
@@ -350,6 +404,20 @@ function render() {
         render();
       });
     }
+  } else if (section === 'actions') {
+    view.innerHTML = renderActions(state);
+    const filter = view.querySelector('#action-context-filter');
+    filter.addEventListener('change', () => {
+      actionsContext = filter.value;
+      render();
+    });
+    view.addEventListener('click', (event) => {
+      const completeButton = event.target.closest('button.complete');
+      if (completeButton) {
+        completeAction(store, completeButton.dataset.itemId);
+        render();
+      }
+    });
   } else if (section === 'projects') {
     view.innerHTML = renderProjects(state);
   } else if (section === 'waiting') {
