@@ -4,9 +4,13 @@ import { clarifyToNextAction, trashInboxItem } from './clarify.js';
 import {
   PROJECT_PLANNING_STEPS,
   clarifyToProject,
+  completeProject,
+  countActiveProjects,
   countOpenProjectActions,
   countProjectPlanningSteps,
+  isProjectStalled,
   normalizeProjectPlanning,
+  reopenProject,
   updateProjectPlanning,
 } from './projects.js';
 import {
@@ -486,59 +490,94 @@ function renderProjects(state) {
     const bTime = Date.parse(b.createdAt) || 0;
     return bTime - aTime;
   });
+  const activeProjects = projects.filter((project) => project.status === 'active');
+  const completedProjects = projects.filter((project) => project.status === 'completed');
 
-  const list = projects.length
+  function renderActiveProject(project) {
+    const openActions = countOpenProjectActions(project, state.actions);
+    const areaName = resolveAreaName(project.areaId, state.areas);
+    const areaOptions = state.areas.map((area) => (
+      `<option value="${escapeHtml(area.id)}"${area.id === project.areaId ? ' selected' : ''}>${escapeHtml(area.name)}</option>`
+    )).join('');
+    const planning = normalizeProjectPlanning(project.planning);
+    const planningCount = countProjectPlanningSteps(project);
+    const stalled = isProjectStalled(project, state.actions);
+    const planningForm = planningProjectId === project.id
+      ? `<form class="project-planning-form" data-item-id="${escapeHtml(project.id)}">
+          <p class="project-planning-completion">${planningCount}/${PROJECT_PLANNING_STEPS.length} steps filled</p>
+          ${PROJECT_PLANNING_STEPS.map((step) => `
+            <label for="project-${escapeHtml(project.id)}-${escapeHtml(step.key)}">${escapeHtml(step.label)}</label>
+            <textarea id="project-${escapeHtml(project.id)}-${escapeHtml(step.key)}" name="${escapeHtml(step.key)}" rows="2" placeholder="${escapeHtml(step.placeholder)}">${escapeHtml(planning[step.key])}</textarea>
+          `).join('')}
+          <div class="project-planning-actions">
+            <button type="submit">Save Plan</button>
+            <button type="button" class="cancel-project-plan">Cancel</button>
+          </div>
+        </form>`
+      : '';
+    return `
+      <li class="project-item">
+        <div class="project-main">
+          <h3 class="project-title">${escapeHtml(project.title)}</h3>
+          <p class="project-outcome">${escapeHtml(project.outcome)}</p>
+          <p class="project-area">Area: ${areaName ? escapeHtml(areaName) : 'No area'}</p>
+          ${planningForm}
+        </div>
+        <span class="project-meta">
+          <span class="project-status">${escapeHtml(project.status)}</span>
+          ${stalled ? '<span class="project-stalled">Stalled</span>' : ''}
+          <span class="project-open-actions">${openActions} open action${openActions === 1 ? '' : 's'}</span>
+          <span class="project-planning-count">${planningCount}/${PROJECT_PLANNING_STEPS.length} steps filled</span>
+          <button type="button" class="plan-project" data-item-id="${escapeHtml(project.id)}">Plan</button>
+          <button type="button" class="complete-project" data-item-id="${escapeHtml(project.id)}">Complete</button>
+          <label class="project-area-label" for="project-area-${escapeHtml(project.id)}">Assign area</label>
+          <select id="project-area-${escapeHtml(project.id)}" class="project-area-select" data-item-id="${escapeHtml(project.id)}">
+            <option value=""${project.areaId ? '' : ' selected'}>No area</option>
+            ${areaOptions}
+          </select>
+        </span>
+      </li>
+    `;
+  }
+
+  function renderCompletedProject(project) {
+    const areaName = resolveAreaName(project.areaId, state.areas);
+    return `
+      <li class="project-item completed-project-item">
+        <div class="project-main">
+          <h3 class="project-title">${escapeHtml(project.title)}</h3>
+          <p class="project-outcome">${escapeHtml(project.outcome)}</p>
+          <p class="project-area">Area: ${areaName ? escapeHtml(areaName) : 'No area'}</p>
+          <p class="project-completed-at">Completed ${escapeHtml(formatTimestamp(project.completedAt))}</p>
+        </div>
+        <span class="project-meta">
+          <span class="project-status">${escapeHtml(project.status)}</span>
+          <button type="button" class="reopen-project" data-item-id="${escapeHtml(project.id)}">Reopen</button>
+        </span>
+      </li>
+    `;
+  }
+
+  const activeList = activeProjects.length
     ? `<ul class="project-list">
-        ${projects.map((project) => {
-          const openActions = countOpenProjectActions(project, state.actions);
-          const areaName = resolveAreaName(project.areaId, state.areas);
-          const areaOptions = state.areas.map((area) => (
-            `<option value="${escapeHtml(area.id)}"${area.id === project.areaId ? ' selected' : ''}>${escapeHtml(area.name)}</option>`
-          )).join('');
-          const planning = normalizeProjectPlanning(project.planning);
-          const planningCount = countProjectPlanningSteps(project);
-          const planningForm = planningProjectId === project.id
-            ? `<form class="project-planning-form" data-item-id="${escapeHtml(project.id)}">
-                <p class="project-planning-completion">${planningCount}/${PROJECT_PLANNING_STEPS.length} steps filled</p>
-                ${PROJECT_PLANNING_STEPS.map((step) => `
-                  <label for="project-${escapeHtml(project.id)}-${escapeHtml(step.key)}">${escapeHtml(step.label)}</label>
-                  <textarea id="project-${escapeHtml(project.id)}-${escapeHtml(step.key)}" name="${escapeHtml(step.key)}" rows="2" placeholder="${escapeHtml(step.placeholder)}">${escapeHtml(planning[step.key])}</textarea>
-                `).join('')}
-                <div class="project-planning-actions">
-                  <button type="submit">Save Plan</button>
-                  <button type="button" class="cancel-project-plan">Cancel</button>
-                </div>
-              </form>`
-            : '';
-          return `
-            <li class="project-item">
-              <div class="project-main">
-                <h3 class="project-title">${escapeHtml(project.title)}</h3>
-                <p class="project-outcome">${escapeHtml(project.outcome)}</p>
-                <p class="project-area">Area: ${areaName ? escapeHtml(areaName) : 'No area'}</p>
-                ${planningForm}
-              </div>
-              <span class="project-meta">
-                <span class="project-status">${escapeHtml(project.status)}</span>
-                <span class="project-open-actions">${openActions} open action${openActions === 1 ? '' : 's'}</span>
-                <span class="project-planning-count">${planningCount}/${PROJECT_PLANNING_STEPS.length} steps filled</span>
-                <button type="button" class="plan-project" data-item-id="${escapeHtml(project.id)}">Plan</button>
-                <label class="project-area-label" for="project-area-${escapeHtml(project.id)}">Assign area</label>
-                <select id="project-area-${escapeHtml(project.id)}" class="project-area-select" data-item-id="${escapeHtml(project.id)}">
-                  <option value=""${project.areaId ? '' : ' selected'}>No area</option>
-                  ${areaOptions}
-                </select>
-              </span>
-            </li>
-          `;
-        }).join('')}
+        ${activeProjects.map(renderActiveProject).join('')}
       </ul>`
-    : '<p class="empty">No projects yet. Clarify an inbox item into a project to get started.</p>';
+    : '<p class="empty">No active projects. Clarify an inbox item into a project to get started.</p>';
+
+  const completedList = completedProjects.length
+    ? `<ul class="project-list completed-project-list">
+        ${completedProjects.map(renderCompletedProject).join('')}
+      </ul>`
+    : '<p class="empty">No completed projects yet.</p>';
 
   return `
     <section class="projects" aria-labelledby="projects-heading">
       <h2 id="projects-heading">Projects</h2>
-      ${list}
+      ${activeList}
+      <section class="completed-projects" aria-labelledby="completed-projects-heading">
+        <h2 id="completed-projects-heading">Completed</h2>
+        ${completedList}
+      </section>
     </section>
   `;
 }
@@ -818,7 +857,7 @@ function render() {
         <a href="#inbox"${section === 'inbox' ? ' aria-current="page"' : ''}>Inbox (${state.inbox.length})</a>
         <a href="#actions"${section === 'actions' ? ' aria-current="page"' : ''}>Next Actions (${countOpenActions(state.actions)})</a>
         <a href="#engage"${section === 'engage' ? ' aria-current="page"' : ''}>Engage</a>
-        <a href="#projects"${section === 'projects' ? ' aria-current="page"' : ''}>Projects (${state.projects.length})</a>
+        <a href="#projects"${section === 'projects' ? ' aria-current="page"' : ''}>Projects (${countActiveProjects(state.projects)})</a>
         <a href="#areas"${section === 'areas' ? ' aria-current="page"' : ''}>Areas (${state.areas.length})</a>
         <a href="#contexts"${section === 'contexts' ? ' aria-current="page"' : ''}>Contexts (${state.settings.contexts.length})</a>
         <a href="#horizons"${section === 'horizons' ? ' aria-current="page"' : ''}>Horizons</a>
@@ -1000,6 +1039,21 @@ function render() {
       }
     });
     view.addEventListener('click', (event) => {
+      const completeButton = event.target.closest('button.complete-project');
+      if (completeButton) {
+        if (planningProjectId === completeButton.dataset.itemId) planningProjectId = null;
+        completeProject(store, completeButton.dataset.itemId);
+        render();
+        return;
+      }
+
+      const reopenButton = event.target.closest('button.reopen-project');
+      if (reopenButton) {
+        reopenProject(store, reopenButton.dataset.itemId);
+        render();
+        return;
+      }
+
       const planButton = event.target.closest('button.plan-project');
       if (planButton) {
         planningProjectId = planningProjectId === planButton.dataset.itemId

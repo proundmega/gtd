@@ -181,13 +181,102 @@ export function clarifyToProject(store, itemId, outcome, context) {
   return project;
 }
 
+function actionsFrom(value) {
+  if (Array.isArray(value)) return value;
+  const state = value && typeof value.getState === 'function' ? value.getState() : value;
+  return Array.isArray(state?.actions) ? state.actions : [];
+}
+
+function projectsFrom(value) {
+  if (Array.isArray(value)) return value;
+  const state = value && typeof value.getState === 'function' ? value.getState() : value;
+  return Array.isArray(state?.projects) ? state.projects : [];
+}
+
+function resolveCompletedAt(value) {
+  if (value == null) return new Date().toISOString();
+  if (value instanceof Date) return value.toISOString();
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
+}
+
 export function countOpenProjectActions(project, actions) {
-  return actions.filter((action) => (
-    action.projectId === project.id
+  return actionsFrom(actions).filter((action) => (
+    action
+    && project
+    && action.projectId === project.id
     && action.status !== 'done'
     && action.status !== 'completed'
     && action.status !== 'trashed'
   )).length;
+}
+
+export function isProjectActive(project) {
+  return Boolean(project) && project.status === 'active';
+}
+
+export function countActiveProjects(projects) {
+  return projectsFrom(projects).filter(isProjectActive).length;
+}
+
+export function getActiveProjects(projects) {
+  return projectsFrom(projects).filter(isProjectActive);
+}
+
+export function getCompletedProjects(projects) {
+  return projectsFrom(projects).filter((project) => (
+    Boolean(project) && project.status === 'completed'
+  ));
+}
+
+export function isProjectStalled(project, actions) {
+  return isProjectActive(project) && countOpenProjectActions(project, actions) === 0;
+}
+
+export function completeProject(store, projectId, completedAt = null) {
+  if (!store || typeof store.update !== 'function') return null;
+
+  const state = store.getState();
+  const project = projectsFrom(state).find((candidate) => candidate.id === projectId);
+  if (!project) return null;
+
+  const updated = {
+    ...project,
+    status: 'completed',
+    completedAt: resolveCompletedAt(completedAt),
+  };
+
+  store.update((draft) => {
+    draft.projects = projectsFrom(draft).map((candidate) => (
+      candidate.id === projectId ? updated : candidate
+    ));
+    return draft;
+  });
+
+  return updated;
+}
+
+export function reopenProject(store, projectId) {
+  if (!store || typeof store.update !== 'function') return null;
+
+  const state = store.getState();
+  const project = projectsFrom(state).find((candidate) => candidate.id === projectId);
+  if (!project) return null;
+
+  const updated = {
+    ...project,
+    status: 'active',
+    completedAt: null,
+  };
+
+  store.update((draft) => {
+    draft.projects = projectsFrom(draft).map((candidate) => (
+      candidate.id === projectId ? updated : candidate
+    ));
+    return draft;
+  });
+
+  return updated;
 }
 
 export const NATURAL_PLANNING_STEPS = PROJECT_PLANNING_STEPS;
@@ -208,3 +297,21 @@ export const countProjectPlanning = countProjectPlanningSteps;
 export const saveProjectPlanning = updateProjectPlanning;
 export const setProjectPlanning = updateProjectPlanning;
 export const updatePlanning = updateProjectPlanning;
+
+export const markProjectComplete = completeProject;
+export const markProjectCompleted = completeProject;
+export const finishProject = completeProject;
+export const reactivateProject = reopenProject;
+export const activateProject = reopenProject;
+export const markProjectActive = reopenProject;
+
+export const countActive = countActiveProjects;
+export const activeProjectCount = countActiveProjects;
+export const getActiveProjectCount = countActiveProjects;
+export const listActiveProjects = getActiveProjects;
+export const listCompletedProjects = getCompletedProjects;
+export const countCompletedProjects = (projects) => getCompletedProjects(projects).length;
+
+export const isStalledProject = isProjectStalled;
+export const projectIsStalled = isProjectStalled;
+export const isStalled = isProjectStalled;
