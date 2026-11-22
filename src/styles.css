@@ -197,3 +197,25 @@ button.plan-project { padding: .35rem .6rem; border: 0; border-radius: .35rem; b
 .goal-title { margin: 0 0 .25rem; font-size: 1rem; overflow-wrap: anywhere; }
 .goal-description { margin: 0; color: var(--muted); font-size: .9rem; overflow-wrap: anywhere; }
 .goal-item button { flex-shrink: 0; padding: .3rem .65rem; border: 1px solid var(--border); border-radius: .35rem; background: var(--surface); color: var(--text); font: inherit; font-size: .85rem; cursor: pointer; }
+.search h2 { margin-top: 0; }
+.search-form { margin-bottom: 1rem; }
+.search-form label { display: block; margin-bottom: .35rem; font-weight: 600; }
+.search-row { display: flex; gap: .5rem; }
+.search-row input { flex: 1; min-width: 0; padding: .55rem .65rem; border: 1px solid var(--border); border-radius: .4rem; background: var(--surface); color: var(--text); font: inherit; }
+.search-row button, .backup-controls button { padding: .55rem 1rem; border: 0; border-radius: .4rem; background: var(--accent); color: #fff; font: inherit; cursor: pointer; }
+.search-summary { margin: 0 0 1rem; color: var(--muted); }
+.search-results { display: grid; gap: 1.25rem; }
+.search-group h3 { margin: 0 0 .5rem; font-size: 1rem; }
+.search-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.search-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: .75rem .9rem; background: var(--surface); border: 1px solid var(--border); border-radius: .4rem; }
+.search-main { min-width: 0; }
+.search-title { margin: 0 0 .25rem; font-size: 1rem; overflow-wrap: anywhere; }
+.search-detail { margin: 0; color: var(--muted); font-size: .9rem; overflow-wrap: anywhere; }
+.search-list-label { flex-shrink: 0; color: var(--accent); font-size: .82rem; }
+.backup { margin-top: 2rem; padding: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: .4rem; }
+.backup h3 { margin: 0 0 .35rem; font-size: 1rem; }
+.backup .hint { margin: 0 0 .75rem; color: var(--muted); font-size: .88rem; }
+.backup-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.import-backup { display: inline-block; padding: .55rem 1rem; border: 1px solid var(--accent); border-radius: .4rem; background: var(--surface); color: var(--accent); font: inherit; cursor: pointer; }
+.import-backup input, #import-backup { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.backup-error { margin: .75rem 0 0; color: #b42318; font-weight: 600; }

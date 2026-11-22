@@ -51,6 +51,16 @@ import {
   removeGoal,
   saveHorizonSettings,
 } from './horizons.js';
+import {
+  normalizeSearchQuery,
+  searchGroups,
+} from './search.js';
+import {
+  BACKUP_FILENAME,
+  exportBackup,
+  getBackupError,
+  importBackup,
+} from './backup.js';
 
 const store = createStore();
 const app = document.querySelector('#app');
@@ -61,6 +71,8 @@ let planningProjectId = null;
 let engageContext = 'all';
 let engageEnergy = 'any';
 let engageTime = 'any';
+let searchQuery = '';
+let backupError = '';
 
 function escapeHtml(value) {
   return String(value)
@@ -656,6 +668,66 @@ function renderCalendar(state) {
   `;
 }
 
+function renderSearch(state) {
+  const term = normalizeSearchQuery(searchQuery);
+  const groups = term ? searchGroups(state, term) : [];
+  const total = groups.reduce((count, group) => count + group.count, 0);
+
+  const results = groups.length
+    ? `<div class="search-results">
+        ${groups.map((group) => `
+          <section class="search-group" aria-labelledby="search-${escapeHtml(group.key)}">
+            <h3 id="search-${escapeHtml(group.key)}">${escapeHtml(group.label)} (${group.count})</h3>
+            <ul class="search-list">
+              ${group.items.map((item) => {
+                const title = item.title || item.name || '';
+                const detail = item.field === 'title' || item.field === 'name'
+                  ? ''
+                  : `${item.fieldLabel}: ${item.matched}`;
+                return `
+                  <li class="search-item">
+                    <div class="search-main">
+                      <h4 class="search-title">${escapeHtml(title)}</h4>
+                      ${detail ? `<p class="search-detail">${escapeHtml(detail)}</p>` : ''}
+                    </div>
+                    <span class="search-list-label">${escapeHtml(group.label)}</span>
+                  </li>
+                `;
+              }).join('')}
+            </ul>
+          </section>
+        `).join('')}
+      </div>`
+    : `<p class="empty">${term
+      ? `No matches for &ldquo;${escapeHtml(searchQuery.trim())}&rdquo;.`
+      : 'Enter a search term to search across your GTD lists.'}</p>`;
+
+  return `
+    <section class="search" aria-labelledby="search-heading">
+      <h2 id="search-heading">Search</h2>
+      <form id="search-form" class="search-form" role="search">
+        <label for="search-query">Search all lists</label>
+        <div class="search-row">
+          <input id="search-query" name="query" type="search" value="${escapeHtml(searchQuery)}" placeholder="Search titles, outcomes, people, notes&hellip;" autocomplete="off">
+          <button type="submit">Search</button>
+        </div>
+      </form>
+      ${term ? `<p class="search-summary">${total} result${total === 1 ? '' : 's'} across ${groups.length} list${groups.length === 1 ? '' : 's'}.</p>` : ''}
+      ${results}
+      <div class="backup">
+        <h3>Backup</h3>
+        <p class="hint">Export a full backup of this GTD planner or restore one from a JSON file.</p>
+        <div class="backup-controls">
+          <button type="button" id="export-backup">Export JSON</button>
+          <label class="import-backup" for="import-backup">Import JSON</label>
+          <input id="import-backup" type="file" accept="application/json,.json">
+        </div>
+        ${backupError ? `<p class="backup-error" role="alert">${escapeHtml(backupError)}</p>` : ''}
+      </div>
+    </section>
+  `;
+}
+
 function renderReview(state) {
   const checklist = buildReviewChecklist(state);
   const lastReview = getLastReview(state);
@@ -713,6 +785,7 @@ function render() {
         <a href="#someday"${section === 'someday' ? ' aria-current="page"' : ''}>Someday/Maybe (${countOpenSomeday(state.someday)})</a>
         <a href="#calendar"${section === 'calendar' ? ' aria-current="page"' : ''}>Calendar (${countScheduled(state.calendar)})</a>
         <a href="#reference"${section === 'reference' ? ' aria-current="page"' : ''}>Reference (${countReference(state.reference)})</a>
+        <a href="#search"${section === 'search' ? ' aria-current="page"' : ''}>Search</a>
         <a href="#review"${section === 'review' ? ' aria-current="page"' : ''}>Weekly Review</a>
       </nav>
     </header>
@@ -987,6 +1060,57 @@ function render() {
         const row = reactivateButton.closest('.calendar-item');
         const context = row.querySelector('.calendar-context').value;
         reactivateCalendarItem(store, reactivateButton.dataset.itemId, context);
+        render();
+      }
+    });
+  } else if (section === 'search') {
+    view.innerHTML = renderSearch(state);
+    const searchForm = view.querySelector('#search-form');
+    const searchInput = view.querySelector('#search-query');
+
+    searchForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      searchQuery = searchInput.value;
+      render();
+    });
+
+    searchInput.addEventListener('input', () => {
+      searchQuery = searchInput.value;
+      render();
+      const nextInput = app.querySelector('#search-query');
+      if (nextInput) {
+        nextInput.focus();
+        nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
+      }
+    });
+
+    view.querySelector('#export-backup').addEventListener('click', () => {
+      const blob = new Blob([exportBackup(store.getState())], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = BACKUP_FILENAME;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    view.querySelector('#import-backup').addEventListener('change', async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      try {
+        const contents = await file.text();
+        const imported = importBackup(contents);
+        if (!imported) {
+          backupError = getBackupError(contents) || 'Invalid backup file.';
+          render();
+          return;
+        }
+        backupError = '';
+        store.update(() => imported);
+      } catch {
+        backupError = 'Could not read the selected backup file.';
         render();
       }
     });
