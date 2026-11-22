@@ -12,10 +12,14 @@ export function emptyState() {
     reference: [],
     calendar: [],
     areas: [],
+    goals: [],
     reviews: [],
     settings: {
       contexts: [...DEFAULT_CONTEXTS],
       lastReviewAt: null,
+      purpose: '',
+      principles: '',
+      vision: '',
     },
   };
 }

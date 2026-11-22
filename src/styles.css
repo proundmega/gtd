@@ -163,3 +163,28 @@ body { margin: 0; background: var(--bg); color: var(--text); }
 .engage-main { min-width: 0; }
 .engage-title { margin: 0 0 .25rem; font-size: 1rem; overflow-wrap: anywhere; }
 .engage button.complete { flex-shrink: 0; padding: .35rem .7rem; border: 0; border-radius: .35rem; background: var(--accent); color: #fff; font: inherit; font-size: .85rem; cursor: pointer; }
+.horizons h2 { margin-top: 0; }
+.horizons-intro { margin: 0 0 1rem; color: var(--muted); }
+.horizon-form { display: grid; gap: .5rem; margin-bottom: 1.5rem; padding: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: .4rem; }
+.horizon-form label { font-weight: 600; font-size: .9rem; }
+.horizon-form textarea { padding: .5rem .6rem; border: 1px solid var(--border); border-radius: .4rem; background: var(--surface); color: var(--text); font: inherit; resize: vertical; }
+.horizon-form button { justify-self: start; padding: .5rem .9rem; border: 0; border-radius: .4rem; background: var(--accent); color: #fff; font: inherit; cursor: pointer; }
+.horizon-list { list-style: none; margin: 0 0 1.5rem; padding: 0; display: grid; gap: .5rem; }
+.horizon-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: .75rem .9rem; background: var(--surface); border: 1px solid var(--border); border-radius: .4rem; }
+.horizon-main { min-width: 0; }
+.horizon-title { margin: 0 0 .25rem; font-size: 1rem; overflow-wrap: anywhere; }
+.horizon-description { margin: 0; color: var(--muted); font-size: .9rem; overflow-wrap: anywhere; }
+.horizon-meta { display: flex; align-items: baseline; gap: .5rem; flex-shrink: 0; font-size: .82rem; }
+.horizon-count { min-width: 1.5rem; padding: .1rem .4rem; border-radius: .35rem; background: var(--accent); color: #fff; text-align: center; font-weight: 600; }
+.horizon-summary { color: var(--muted); max-width: 20rem; overflow-wrap: anywhere; }
+.goals h3 { margin: 1.5rem 0 .5rem; font-size: 1rem; }
+.goal-form { display: grid; gap: .5rem; margin-bottom: 1rem; padding: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: .4rem; }
+.goal-form label { font-weight: 600; font-size: .9rem; }
+.goal-form input { padding: .5rem .6rem; border: 1px solid var(--border); border-radius: .4rem; background: var(--surface); color: var(--text); font: inherit; }
+.goal-form button { justify-self: start; padding: .5rem .9rem; border: 0; border-radius: .4rem; background: var(--accent); color: #fff; font: inherit; cursor: pointer; }
+.goal-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.goal-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: .75rem .9rem; background: var(--surface); border: 1px solid var(--border); border-radius: .4rem; }
+.goal-main { min-width: 0; }
+.goal-title { margin: 0 0 .25rem; font-size: 1rem; overflow-wrap: anywhere; }
+.goal-description { margin: 0; color: var(--muted); font-size: .9rem; overflow-wrap: anywhere; }
+.goal-item button { flex-shrink: 0; padding: .3rem .65rem; border: 1px solid var(--border); border-radius: .35rem; background: var(--surface); color: var(--text); font: inherit; font-size: .85rem; cursor: pointer; }
