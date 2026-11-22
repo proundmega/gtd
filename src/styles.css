@@ -101,6 +101,19 @@ button.plan-project { padding: .35rem .6rem; border: 0; border-radius: .35rem; b
 .area-meta { display: flex; flex-direction: column; align-items: flex-end; gap: .2rem; flex-shrink: 0; font-size: .82rem; }
 .area-project-count { color: var(--accent); }
 .area-time { color: var(--muted); }
+.contexts h2 { margin-top: 0; }
+.contexts-intro { margin: 0 0 1rem; color: var(--muted); }
+.context-error { margin: 0 0 1rem; padding: .6rem .75rem; color: #b42318; background: var(--surface); border: 1px solid #b42318; border-radius: .4rem; font-weight: 600; }
+.context-form { display: grid; gap: .5rem; margin-bottom: 1.5rem; padding: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: .4rem; }
+.context-form label { font-weight: 600; font-size: .9rem; }
+.context-form input { padding: .5rem .6rem; border: 1px solid var(--border); border-radius: .4rem; background: var(--surface); color: var(--text); font: inherit; }
+.context-form button { justify-self: start; padding: .5rem .9rem; border: 0; border-radius: .4rem; background: var(--accent); color: #fff; font: inherit; cursor: pointer; }
+.context-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.context-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: .75rem .9rem; background: var(--surface); border: 1px solid var(--border); border-radius: .4rem; }
+.context-main { min-width: 0; }
+.context-name { margin: 0 0 .25rem; font-size: 1rem; overflow-wrap: anywhere; }
+.context-usage { margin: 0; color: var(--muted); font-size: .85rem; }
+.context-item button { flex-shrink: 0; padding: .3rem .65rem; border: 1px solid var(--border); border-radius: .35rem; background: var(--surface); color: var(--text); font: inherit; font-size: .85rem; cursor: pointer; }
 .waiting h2 { margin-top: 0; }
 .waiting-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
 .waiting-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: .75rem .9rem; background: var(--surface); border: 1px solid var(--border); border-radius: .4rem; }

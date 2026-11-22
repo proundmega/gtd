@@ -56,6 +56,12 @@ import {
   searchGroups,
 } from './search.js';
 import {
+  addContext,
+  buildContexts,
+  countActionsForContext,
+  removeContext,
+} from './contexts.js';
+import {
   BACKUP_FILENAME,
   exportBackup,
   getBackupError,
@@ -73,6 +79,7 @@ let engageEnergy = 'any';
 let engageTime = 'any';
 let searchQuery = '';
 let backupError = '';
+let contextError = '';
 
 function escapeHtml(value) {
   return String(value)
@@ -374,6 +381,38 @@ function renderAreas(state) {
         <label for="area-description">Description (optional)</label>
         <input id="area-description" name="description" type="text" placeholder="What does this responsibility cover?" autocomplete="off">
         <button type="submit">Add Area</button>
+      </form>
+      ${list}
+    </section>
+  `;
+}
+
+function renderContexts(state) {
+  const contexts = buildContexts(state);
+
+  const list = contexts.length
+    ? `<ul class="context-list">
+        ${contexts.map((entry) => `
+          <li class="context-item">
+            <div class="context-main">
+              <h3 class="context-name">${escapeHtml(entry.context)}</h3>
+              <p class="context-usage">${entry.count} active action${entry.count === 1 ? '' : 's'}</p>
+            </div>
+            <button type="button" class="remove-context" data-context="${escapeHtml(entry.context)}">Remove</button>
+          </li>
+        `).join('')}
+      </ul>`
+    : '<p class="empty">No contexts yet. Add one below.</p>';
+
+  return `
+    <section class="contexts" aria-labelledby="contexts-heading">
+      <h2 id="contexts-heading">Settings: Contexts</h2>
+      <p class="contexts-intro">Contexts describe where or with what you can do an action.</p>
+      ${contextError ? `<p class="context-error" role="alert">${escapeHtml(contextError)}</p>` : ''}
+      <form id="context-form" class="context-form">
+        <label for="context-name">Context</label>
+        <input id="context-name" name="name" type="text" placeholder="e.g. @work" autocomplete="off" required>
+        <button type="submit">Add Context</button>
       </form>
       ${list}
     </section>
@@ -770,6 +809,7 @@ function renderReview(state) {
 function render() {
   const state = store.getState();
   const section = window.location.hash.slice(1) || 'inbox';
+  if (section !== 'contexts' && section !== 'settings') contextError = '';
 
   app.innerHTML = `
     <header class="topbar">
@@ -780,6 +820,7 @@ function render() {
         <a href="#engage"${section === 'engage' ? ' aria-current="page"' : ''}>Engage</a>
         <a href="#projects"${section === 'projects' ? ' aria-current="page"' : ''}>Projects (${state.projects.length})</a>
         <a href="#areas"${section === 'areas' ? ' aria-current="page"' : ''}>Areas (${state.areas.length})</a>
+        <a href="#contexts"${section === 'contexts' ? ' aria-current="page"' : ''}>Contexts (${state.settings.contexts.length})</a>
         <a href="#horizons"${section === 'horizons' ? ' aria-current="page"' : ''}>Horizons</a>
         <a href="#waiting"${section === 'waiting' ? ' aria-current="page"' : ''}>Waiting For (${countOpenWaiting(state.waiting)})</a>
         <a href="#someday"${section === 'someday' ? ' aria-current="page"' : ''}>Someday/Maybe (${countOpenSomeday(state.someday)})</a>
@@ -997,6 +1038,42 @@ function render() {
       if (addArea(store, name.value, description.value)) {
         name.value = '';
         description.value = '';
+      }
+    });
+  } else if (section === 'contexts' || section === 'settings') {
+    view.innerHTML = renderContexts(state);
+    const form = view.querySelector('#context-form');
+    const input = form.querySelector('#context-name');
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const trimmed = input.value.trim();
+      if (!trimmed) {
+        contextError = 'Context name cannot be empty.';
+        render();
+        return;
+      }
+      contextError = '';
+      if (!addContext(store, trimmed)) {
+        contextError = `"${trimmed}" is already a context.`;
+        render();
+        return;
+      }
+      input.value = '';
+    });
+    view.addEventListener('click', (event) => {
+      const removeButton = event.target.closest('button.remove-context');
+      if (!removeButton) return;
+      const name = removeButton.dataset.context;
+      const used = countActionsForContext(name, state.actions);
+      if (used > 0) {
+        contextError = `Cannot remove ${name}: ${used} active action${used === 1 ? '' : 's'} still use it.`;
+        render();
+        return;
+      }
+      contextError = '';
+      if (!removeContext(store, name)) {
+        contextError = `Could not remove ${name}.`;
+        render();
       }
     });
   } else if (section === 'horizons') {
