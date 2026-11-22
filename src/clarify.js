@@ -3,6 +3,7 @@ import { nextId } from './store.js';
 export { clarifyToProject } from './projects.js';
 export { clarifyToWaiting } from './waiting.js';
 export { clarifyToSomeday } from './someday.js';
+export { clarifyToReference } from './reference.js';
 
 function findInboxItem(state, itemId) {
   return state.inbox.find((item) => item.id === itemId) ?? null;

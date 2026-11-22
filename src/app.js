@@ -4,6 +4,7 @@ import { clarifyToNextAction, trashInboxItem } from './clarify.js';
 import { clarifyToProject, countOpenProjectActions } from './projects.js';
 import { clarifyToWaiting, markWaitingReceived, countOpenWaiting } from './waiting.js';
 import { clarifyToSomeday, activateSomedayItem, countOpenSomeday } from './someday.js';
+import { clarifyToReference, countReference } from './reference.js';
 
 const store = createStore();
 const app = document.querySelector('#app');
@@ -53,11 +54,14 @@ function renderClarifyPanel(state, item) {
         <input id="clarify-person" name="person" type="text" placeholder="Who are you waiting on?" autocomplete="off">
         <label for="clarify-follow-up">Follow-up date (optional)</label>
         <input id="clarify-follow-up" name="followUpDate" type="date">
+        <label for="clarify-note">Reference note</label>
+        <input id="clarify-note" name="note" type="text" placeholder="What should you remember about this?" autocomplete="off">
         <div class="clarify-actions">
           <button type="submit">Next Action</button>
           <button type="button" class="project" data-item-id="${escapeHtml(item.id)}">Project</button>
           <button type="button" class="waiting" data-item-id="${escapeHtml(item.id)}">Waiting For</button>
           <button type="button" class="someday" data-item-id="${escapeHtml(item.id)}">Someday/Maybe</button>
+          <button type="button" class="reference" data-item-id="${escapeHtml(item.id)}">Reference</button>
           <button type="button" class="trash" data-item-id="${escapeHtml(item.id)}">Trash</button>
         </div>
       </form>
@@ -211,6 +215,38 @@ function renderSomeday(state) {
   `;
 }
 
+function renderReference(state) {
+  const items = [...state.reference].sort((a, b) => {
+    const aTime = Date.parse(a.createdAt) || 0;
+    const bTime = Date.parse(b.createdAt) || 0;
+    return bTime - aTime;
+  });
+
+  const list = items.length
+    ? `<ul class="reference-list">
+        ${items.map((item) => `
+          <li class="reference-item">
+            <div class="reference-main">
+              <h3 class="reference-title">${escapeHtml(item.title)}</h3>
+              <p class="reference-note">${escapeHtml(item.note)}</p>
+            </div>
+            <span class="reference-meta">
+              <span class="reference-status">${escapeHtml(item.status)}</span>
+              <time class="reference-time" datetime="${escapeHtml(item.createdAt)}">${escapeHtml(formatTimestamp(item.createdAt))}</time>
+            </span>
+          </li>
+        `).join('')}
+      </ul>`
+    : '<p class="empty">No reference items yet. File an inbox item as Reference to get started.</p>';
+
+  return `
+    <section class="reference" aria-labelledby="reference-heading">
+      <h2 id="reference-heading">Reference</h2>
+      ${list}
+    </section>
+  `;
+}
+
 function render() {
   const state = store.getState();
   const section = window.location.hash.slice(1) || 'inbox';
@@ -224,6 +260,7 @@ function render() {
         <a href="#projects"${section === 'projects' ? ' aria-current="page"' : ''}>Projects (${state.projects.length})</a>
         <a href="#waiting"${section === 'waiting' ? ' aria-current="page"' : ''}>Waiting For (${countOpenWaiting(state.waiting)})</a>
         <a href="#someday"${section === 'someday' ? ' aria-current="page"' : ''}>Someday/Maybe (${countOpenSomeday(state.someday)})</a>
+        <a href="#reference"${section === 'reference' ? ' aria-current="page"' : ''}>Reference (${countReference(state.reference)})</a>
         <a href="#review"${section === 'review' ? ' aria-current="page"' : ''}>Weekly Review</a>
       </nav>
     </header>
@@ -288,6 +325,17 @@ function render() {
           clarifyItemId = null;
         }
         render();
+        return;
+      }
+
+      const referenceButton = event.target.closest('button.reference');
+      if (referenceButton) {
+        const form = referenceButton.closest('#clarify-form');
+        const note = form.querySelector('#clarify-note').value;
+        if (clarifyToReference(store, referenceButton.dataset.itemId, note)) {
+          clarifyItemId = null;
+        }
+        render();
       }
     });
 
@@ -324,6 +372,8 @@ function render() {
         render();
       }
     });
+  } else if (section === 'reference') {
+    view.innerHTML = renderReference(state);
   } else {
     view.innerHTML = '<p class="empty">Your GTD workspace is ready. Capture something to get started.</p>';
   }
