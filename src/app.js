@@ -3,6 +3,7 @@ import { addInboxItem, sortInboxNewestFirst } from './inbox.js';
 import { clarifyToNextAction, trashInboxItem } from './clarify.js';
 import { clarifyToProject, countOpenProjectActions } from './projects.js';
 import { clarifyToWaiting, markWaitingReceived, countOpenWaiting } from './waiting.js';
+import { clarifyToSomeday, activateSomedayItem, countOpenSomeday } from './someday.js';
 
 const store = createStore();
 const app = document.querySelector('#app');
@@ -56,6 +57,7 @@ function renderClarifyPanel(state, item) {
           <button type="submit">Next Action</button>
           <button type="button" class="project" data-item-id="${escapeHtml(item.id)}">Project</button>
           <button type="button" class="waiting" data-item-id="${escapeHtml(item.id)}">Waiting For</button>
+          <button type="button" class="someday" data-item-id="${escapeHtml(item.id)}">Someday/Maybe</button>
           <button type="button" class="trash" data-item-id="${escapeHtml(item.id)}">Trash</button>
         </div>
       </form>
@@ -167,6 +169,48 @@ function renderWaiting(state) {
   `;
 }
 
+function renderSomeday(state) {
+  const items = [...state.someday].sort((a, b) => {
+    const aTime = Date.parse(a.createdAt) || 0;
+    const bTime = Date.parse(b.createdAt) || 0;
+    return bTime - aTime;
+  });
+
+  const options = state.settings.contexts
+    .map((context) => `<option value="${escapeHtml(context)}">${escapeHtml(context)}</option>`)
+    .join('');
+
+  const list = items.length
+    ? `<ul class="someday-list">
+        ${items.map((item) => `
+          <li class="someday-item">
+            <div class="someday-main">
+              <h3 class="someday-title">${escapeHtml(item.title)}</h3>
+              <p class="someday-meta">
+                <span class="someday-status">${escapeHtml(item.status)}</span>
+                <time class="someday-time" datetime="${escapeHtml(item.createdAt)}">${escapeHtml(formatTimestamp(item.createdAt))}</time>
+              </p>
+            </div>
+            <span class="someday-activate">
+              <select class="someday-context" aria-label="Activation context for ${escapeHtml(item.title)}">
+                <option value="">Choose a context&hellip;</option>
+                ${options}
+              </select>
+              <button type="button" class="activate" data-item-id="${escapeHtml(item.id)}">Activate</button>
+            </span>
+          </li>
+        `).join('')}
+      </ul>`
+    : '<p class="empty">No Someday/Maybe items yet. Park an inbox item to get started.</p>';
+
+  return `
+    <section class="someday" aria-labelledby="someday-heading">
+      <h2 id="someday-heading">Someday/Maybe</h2>
+      ${list}
+    </section>
+  `;
+}
+
 function render() {
   const state = store.getState();
   const section = window.location.hash.slice(1) || 'inbox';
@@ -179,6 +223,7 @@ function render() {
         <a href="#actions"${section === 'actions' ? ' aria-current="page"' : ''}>Next Actions (${state.actions.length})</a>
         <a href="#projects"${section === 'projects' ? ' aria-current="page"' : ''}>Projects (${state.projects.length})</a>
         <a href="#waiting"${section === 'waiting' ? ' aria-current="page"' : ''}>Waiting For (${countOpenWaiting(state.waiting)})</a>
+        <a href="#someday"${section === 'someday' ? ' aria-current="page"' : ''}>Someday/Maybe (${countOpenSomeday(state.someday)})</a>
         <a href="#review"${section === 'review' ? ' aria-current="page"' : ''}>Weekly Review</a>
       </nav>
     </header>
@@ -234,6 +279,15 @@ function render() {
           clarifyItemId = null;
         }
         render();
+        return;
+      }
+
+      const somedayButton = event.target.closest('button.someday');
+      if (somedayButton) {
+        if (clarifyToSomeday(store, somedayButton.dataset.itemId)) {
+          clarifyItemId = null;
+        }
+        render();
       }
     });
 
@@ -256,6 +310,17 @@ function render() {
       const receivedButton = event.target.closest('button.received');
       if (receivedButton) {
         markWaitingReceived(store, receivedButton.dataset.itemId);
+        render();
+      }
+    });
+  } else if (section === 'someday') {
+    view.innerHTML = renderSomeday(state);
+    view.addEventListener('click', (event) => {
+      const activateButton = event.target.closest('button.activate');
+      if (activateButton) {
+        const row = activateButton.closest('.someday-item');
+        const context = row.querySelector('.someday-context').value;
+        activateSomedayItem(store, activateButton.dataset.itemId, context);
         render();
       }
     });
