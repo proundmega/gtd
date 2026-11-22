@@ -38,6 +38,12 @@ import {
   ENGAGE_TIME_OPTIONS,
   getEngageActions,
 } from './engage.js';
+import {
+  addGoal,
+  buildHorizons,
+  removeGoal,
+  saveHorizonSettings,
+} from './horizons.js';
 
 const store = createStore();
 const app = document.querySelector('#app');
@@ -354,6 +360,67 @@ function renderAreas(state) {
   `;
 }
 
+function renderHorizons(state) {
+  const goals = Array.isArray(state.goals) ? state.goals : [];
+  const settings = state.settings ?? {};
+  const rows = buildHorizons(state);
+
+  const rowList = rows.map((row) => `
+    <li class="horizon-item horizon-${escapeHtml(row.key)}">
+      <div class="horizon-main">
+        <h3 class="horizon-title">${escapeHtml(row.title)}</h3>
+        <p class="horizon-description">${escapeHtml(row.description)}</p>
+      </div>
+      <span class="horizon-meta">
+        ${row.count == null ? '' : `<span class="horizon-count">${row.count}</span>`}
+        <span class="horizon-summary">${escapeHtml(row.summary)}</span>
+      </span>
+    </li>
+  `).join('');
+
+  const goalList = goals.length
+    ? `<ul class="goal-list">
+        ${goals.map((goal) => `
+          <li class="goal-item">
+            <div class="goal-main">
+              <h4 class="goal-title">${escapeHtml(goal.title)}</h4>
+              ${goal.description ? `<p class="goal-description">${escapeHtml(goal.description)}</p>` : ''}
+            </div>
+            <button type="button" class="remove-goal" data-item-id="${escapeHtml(goal.id)}">Remove</button>
+          </li>
+        `).join('')}
+      </ul>`
+    : '<p class="empty">No goals yet. Add one to define your objectives.</p>';
+
+  return `
+    <section class="horizons" aria-labelledby="horizons-heading">
+      <h2 id="horizons-heading">Horizons of Focus</h2>
+      <p class="horizons-intro">Work from purpose down to the next action.</p>
+      <form id="horizon-form" class="horizon-form">
+        <label for="horizon-purpose">Purpose</label>
+        <textarea id="horizon-purpose" name="purpose" rows="3" placeholder="Why do you do what you do?">${escapeHtml(settings.purpose ?? '')}</textarea>
+        <label for="horizon-principles">Principles</label>
+        <textarea id="horizon-principles" name="principles" rows="3" placeholder="What values guide your choices?">${escapeHtml(settings.principles ?? '')}</textarea>
+        <label for="horizon-vision">Vision</label>
+        <textarea id="horizon-vision" name="vision" rows="3" placeholder="What does success look like?">${escapeHtml(settings.vision ?? '')}</textarea>
+        <button type="submit">Save Horizons</button>
+      </form>
+      <ul class="horizon-list">${rowList}</ul>
+      <div class="goals">
+        <h3>Goals &amp; Objectives</h3>
+        <form id="goal-form" class="goal-form">
+          <label for="goal-title">Add a goal</label>
+          <input id="goal-title" name="title" type="text" placeholder="e.g. Run a half marathon" autocomplete="off" required>
+          <label for="goal-description">Description (optional)</label>
+          <input id="goal-description" name="description" type="text" placeholder="What does achieving it look like?" autocomplete="off">
+          <button type="submit">Add Goal</button>
+        </form>
+        ${goalList}
+      </div>
+    </section>
+  `;
+}
+
 function renderProjects(state) {
   const projects = [...state.projects].sort((a, b) => {
     const aTime = Date.parse(a.createdAt) || 0;
@@ -615,6 +682,7 @@ function render() {
         <a href="#engage"${section === 'engage' ? ' aria-current="page"' : ''}>Engage</a>
         <a href="#projects"${section === 'projects' ? ' aria-current="page"' : ''}>Projects (${state.projects.length})</a>
         <a href="#areas"${section === 'areas' ? ' aria-current="page"' : ''}>Areas (${state.areas.length})</a>
+        <a href="#horizons"${section === 'horizons' ? ' aria-current="page"' : ''}>Horizons</a>
         <a href="#waiting"${section === 'waiting' ? ' aria-current="page"' : ''}>Waiting For (${countOpenWaiting(state.waiting)})</a>
         <a href="#someday"${section === 'someday' ? ' aria-current="page"' : ''}>Someday/Maybe (${countOpenSomeday(state.someday)})</a>
         <a href="#calendar"${section === 'calendar' ? ' aria-current="page"' : ''}>Calendar (${countScheduled(state.calendar)})</a>
@@ -801,6 +869,37 @@ function render() {
       if (addArea(store, name.value, description.value)) {
         name.value = '';
         description.value = '';
+      }
+    });
+  } else if (section === 'horizons') {
+    view.innerHTML = renderHorizons(state);
+    const horizonForm = view.querySelector('#horizon-form');
+    horizonForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      saveHorizonSettings(store, {
+        purpose: horizonForm.querySelector('#horizon-purpose').value,
+        principles: horizonForm.querySelector('#horizon-principles').value,
+        vision: horizonForm.querySelector('#horizon-vision').value,
+      });
+      render();
+    });
+
+    const goalForm = view.querySelector('#goal-form');
+    goalForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const title = goalForm.querySelector('#goal-title');
+      const description = goalForm.querySelector('#goal-description');
+      if (addGoal(store, title.value, description.value)) {
+        title.value = '';
+        description.value = '';
+      }
+    });
+
+    view.addEventListener('click', (event) => {
+      const removeButton = event.target.closest('button.remove-goal');
+      if (removeButton) {
+        removeGoal(store, removeButton.dataset.itemId);
+        render();
       }
     });
   } else if (section === 'waiting') {
