@@ -2,6 +2,12 @@ import { createStore } from './store.js';
 import { addInboxItem, sortInboxNewestFirst } from './inbox.js';
 import { clarifyToNextAction, trashInboxItem } from './clarify.js';
 import { clarifyToProject, countOpenProjectActions } from './projects.js';
+import {
+  addArea,
+  assignProjectToArea,
+  countProjectsForArea,
+  resolveAreaName,
+} from './areas.js';
 import { clarifyToWaiting, markWaitingReceived, countOpenWaiting } from './waiting.js';
 import { clarifyToSomeday, activateSomedayItem, countOpenSomeday } from './someday.js';
 import { clarifyToReference, countReference } from './reference.js';
@@ -306,6 +312,48 @@ function renderEngage(state) {
   `;
 }
 
+function renderAreas(state) {
+  const areas = [...state.areas].sort((a, b) => {
+    const aTime = Date.parse(a.createdAt) || 0;
+    const bTime = Date.parse(b.createdAt) || 0;
+    return bTime - aTime;
+  });
+
+  const list = areas.length
+    ? `<ul class="area-list">
+        ${areas.map((area) => {
+          const projectCount = countProjectsForArea(area, state.projects);
+          return `
+            <li class="area-item">
+              <div class="area-main">
+                <h3 class="area-name">${escapeHtml(area.name)}</h3>
+                ${area.description ? `<p class="area-description">${escapeHtml(area.description)}</p>` : ''}
+              </div>
+              <span class="area-meta">
+                <span class="area-project-count">${projectCount} project${projectCount === 1 ? '' : 's'}</span>
+                <time class="area-time" datetime="${escapeHtml(area.createdAt)}">${escapeHtml(formatTimestamp(area.createdAt))}</time>
+              </span>
+            </li>
+          `;
+        }).join('')}
+      </ul>`
+    : '<p class="empty">No areas yet. Add one to group projects by responsibility.</p>';
+
+  return `
+    <section class="areas" aria-labelledby="areas-heading">
+      <h2 id="areas-heading">Areas of Focus</h2>
+      <form id="area-form" class="area-form">
+        <label for="area-name">Name</label>
+        <input id="area-name" name="name" type="text" placeholder="e.g. Health" autocomplete="off" required>
+        <label for="area-description">Description (optional)</label>
+        <input id="area-description" name="description" type="text" placeholder="What does this responsibility cover?" autocomplete="off">
+        <button type="submit">Add Area</button>
+      </form>
+      ${list}
+    </section>
+  `;
+}
+
 function renderProjects(state) {
   const projects = [...state.projects].sort((a, b) => {
     const aTime = Date.parse(a.createdAt) || 0;
@@ -317,15 +365,25 @@ function renderProjects(state) {
     ? `<ul class="project-list">
         ${projects.map((project) => {
           const openActions = countOpenProjectActions(project, state.actions);
+          const areaName = resolveAreaName(project.areaId, state.areas);
+          const areaOptions = state.areas.map((area) => (
+            `<option value="${escapeHtml(area.id)}"${area.id === project.areaId ? ' selected' : ''}>${escapeHtml(area.name)}</option>`
+          )).join('');
           return `
             <li class="project-item">
               <div class="project-main">
                 <h3 class="project-title">${escapeHtml(project.title)}</h3>
                 <p class="project-outcome">${escapeHtml(project.outcome)}</p>
+                <p class="project-area">Area: ${areaName ? escapeHtml(areaName) : 'No area'}</p>
               </div>
               <span class="project-meta">
                 <span class="project-status">${escapeHtml(project.status)}</span>
                 <span class="project-open-actions">${openActions} open action${openActions === 1 ? '' : 's'}</span>
+                <label class="project-area-label" for="project-area-${escapeHtml(project.id)}">Assign area</label>
+                <select id="project-area-${escapeHtml(project.id)}" class="project-area-select" data-item-id="${escapeHtml(project.id)}">
+                  <option value=""${project.areaId ? '' : ' selected'}>No area</option>
+                  ${areaOptions}
+                </select>
               </span>
             </li>
           `;
@@ -556,6 +614,7 @@ function render() {
         <a href="#actions"${section === 'actions' ? ' aria-current="page"' : ''}>Next Actions (${countOpenActions(state.actions)})</a>
         <a href="#engage"${section === 'engage' ? ' aria-current="page"' : ''}>Engage</a>
         <a href="#projects"${section === 'projects' ? ' aria-current="page"' : ''}>Projects (${state.projects.length})</a>
+        <a href="#areas"${section === 'areas' ? ' aria-current="page"' : ''}>Areas (${state.areas.length})</a>
         <a href="#waiting"${section === 'waiting' ? ' aria-current="page"' : ''}>Waiting For (${countOpenWaiting(state.waiting)})</a>
         <a href="#someday"${section === 'someday' ? ' aria-current="page"' : ''}>Someday/Maybe (${countOpenSomeday(state.someday)})</a>
         <a href="#calendar"${section === 'calendar' ? ' aria-current="page"' : ''}>Calendar (${countScheduled(state.calendar)})</a>
@@ -725,6 +784,25 @@ function render() {
     });
   } else if (section === 'projects') {
     view.innerHTML = renderProjects(state);
+    view.addEventListener('change', (event) => {
+      const select = event.target.closest('select.project-area-select');
+      if (select) {
+        assignProjectToArea(store, select.dataset.itemId, select.value);
+        render();
+      }
+    });
+  } else if (section === 'areas') {
+    view.innerHTML = renderAreas(state);
+    const form = view.querySelector('#area-form');
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const name = form.querySelector('#area-name');
+      const description = form.querySelector('#area-description');
+      if (addArea(store, name.value, description.value)) {
+        name.value = '';
+        description.value = '';
+      }
+    });
   } else if (section === 'waiting') {
     view.innerHTML = renderWaiting(state);
     view.addEventListener('click', (event) => {
