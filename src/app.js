@@ -6,6 +6,12 @@ import { clarifyToWaiting, markWaitingReceived, countOpenWaiting } from './waiti
 import { clarifyToSomeday, activateSomedayItem, countOpenSomeday } from './someday.js';
 import { clarifyToReference, countReference } from './reference.js';
 import {
+  clarifyToCalendar,
+  countScheduled,
+  groupCalendarItems,
+  reactivateCalendarItem,
+} from './calendar.js';
+import {
   completeAction,
   countOpenActions,
   filterActionsByContext,
@@ -62,6 +68,8 @@ function renderClarifyPanel(state, item) {
         <input id="clarify-person" name="person" type="text" placeholder="Who are you waiting on?" autocomplete="off">
         <label for="clarify-follow-up">Follow-up date (optional)</label>
         <input id="clarify-follow-up" name="followUpDate" type="date">
+        <label for="clarify-defer-date">Defer until (YYYY-MM-DD)</label>
+        <input id="clarify-defer-date" name="deferDate" type="date" placeholder="YYYY-MM-DD">
         <label for="clarify-note">Reference note</label>
         <input id="clarify-note" name="note" type="text" placeholder="What should you remember about this?" autocomplete="off">
         <div class="clarify-actions">
@@ -69,6 +77,7 @@ function renderClarifyPanel(state, item) {
           <button type="button" class="project" data-item-id="${escapeHtml(item.id)}">Project</button>
           <button type="button" class="waiting" data-item-id="${escapeHtml(item.id)}">Waiting For</button>
           <button type="button" class="someday" data-item-id="${escapeHtml(item.id)}">Someday/Maybe</button>
+          <button type="button" class="defer" data-item-id="${escapeHtml(item.id)}">Defer</button>
           <button type="button" class="reference" data-item-id="${escapeHtml(item.id)}">Reference</button>
           <button type="button" class="trash" data-item-id="${escapeHtml(item.id)}">Trash</button>
         </div>
@@ -301,6 +310,63 @@ function renderReference(state) {
   `;
 }
 
+function renderCalendar(state) {
+  const items = [...state.calendar];
+  const groups = groupCalendarItems(items);
+  const options = state.settings.contexts
+    .map((context) => `<option value="${escapeHtml(context)}">${escapeHtml(context)}</option>`)
+    .join('');
+
+  const groupMeta = [
+    { key: 'today', label: 'Today' },
+    { key: 'upcoming', label: 'Upcoming' },
+    { key: 'overdue', label: 'Overdue' },
+  ];
+
+  const list = items.length
+    ? `<div class="calendar-groups">
+        ${groupMeta.map(({ key, label }) => {
+          const groupItems = groups[key];
+          return `
+            <section class="calendar-group" aria-labelledby="calendar-${key}">
+              <h3 id="calendar-${key}">${label} (${groupItems.length})</h3>
+              ${groupItems.length
+                ? `<ul class="calendar-list">
+                    ${groupItems.map((item) => `
+                      <li class="calendar-item">
+                        <div class="calendar-main">
+                          <h4 class="calendar-title">${escapeHtml(item.title)}</h4>
+                          <p class="calendar-meta">
+                            <span class="calendar-date">Deferred to ${escapeHtml(formatDate(item.deferDate))}</span>
+                            <span class="calendar-status">${escapeHtml(item.status)}</span>
+                            <time class="calendar-time" datetime="${escapeHtml(item.createdAt)}">${escapeHtml(formatTimestamp(item.createdAt))}</time>
+                          </p>
+                        </div>
+                        <span class="calendar-reactivate">
+                          <select class="calendar-context" aria-label="Reactivation context for ${escapeHtml(item.title)}">
+                            <option value="">Choose a context&hellip;</option>
+                            ${options}
+                          </select>
+                          <button type="button" class="reactivate" data-item-id="${escapeHtml(item.id)}">Reactivate</button>
+                        </span>
+                      </li>
+                    `).join('')}
+                  </ul>`
+                : '<p class="empty">Nothing deferred here.</p>'}
+            </section>
+          `;
+        }).join('')}
+      </div>`
+    : '<p class="empty">No scheduled items yet. Defer an inbox item to get started.</p>';
+
+  return `
+    <section class="calendar" aria-labelledby="calendar-heading">
+      <h2 id="calendar-heading">Calendar</h2>
+      ${list}
+    </section>
+  `;
+}
+
 function render() {
   const state = store.getState();
   const section = window.location.hash.slice(1) || 'inbox';
@@ -314,6 +380,7 @@ function render() {
         <a href="#projects"${section === 'projects' ? ' aria-current="page"' : ''}>Projects (${state.projects.length})</a>
         <a href="#waiting"${section === 'waiting' ? ' aria-current="page"' : ''}>Waiting For (${countOpenWaiting(state.waiting)})</a>
         <a href="#someday"${section === 'someday' ? ' aria-current="page"' : ''}>Someday/Maybe (${countOpenSomeday(state.someday)})</a>
+        <a href="#calendar"${section === 'calendar' ? ' aria-current="page"' : ''}>Calendar (${countScheduled(state.calendar)})</a>
         <a href="#reference"${section === 'reference' ? ' aria-current="page"' : ''}>Reference (${countReference(state.reference)})</a>
         <a href="#review"${section === 'review' ? ' aria-current="page"' : ''}>Weekly Review</a>
       </nav>
@@ -382,6 +449,17 @@ function render() {
         return;
       }
 
+      const deferButton = event.target.closest('button.defer');
+      if (deferButton) {
+        const form = deferButton.closest('#clarify-form');
+        const deferDate = form.querySelector('#clarify-defer-date').value;
+        if (clarifyToCalendar(store, deferButton.dataset.itemId, deferDate)) {
+          clarifyItemId = null;
+        }
+        render();
+        return;
+      }
+
       const referenceButton = event.target.closest('button.reference');
       if (referenceButton) {
         const form = referenceButton.closest('#clarify-form');
@@ -442,6 +520,17 @@ function render() {
     });
   } else if (section === 'reference') {
     view.innerHTML = renderReference(state);
+  } else if (section === 'calendar') {
+    view.innerHTML = renderCalendar(state);
+    view.addEventListener('click', (event) => {
+      const reactivateButton = event.target.closest('button.reactivate');
+      if (reactivateButton) {
+        const row = reactivateButton.closest('.calendar-item');
+        const context = row.querySelector('.calendar-context').value;
+        reactivateCalendarItem(store, reactivateButton.dataset.itemId, context);
+        render();
+      }
+    });
   } else {
     view.innerHTML = '<p class="empty">Your GTD workspace is ready. Capture something to get started.</p>';
   }
