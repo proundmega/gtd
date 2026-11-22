@@ -27,12 +27,20 @@ import {
   getLastReview,
   getRecentReviews,
 } from './review.js';
+import {
+  ENGAGE_ENERGIES,
+  ENGAGE_TIME_OPTIONS,
+  getEngageActions,
+} from './engage.js';
 
 const store = createStore();
 const app = document.querySelector('#app');
 let clarifyItemId = null;
 let actionsContext = 'all';
 let planningActionId = null;
+let engageContext = 'all';
+let engageEnergy = 'any';
+let engageTime = 'any';
 
 function escapeHtml(value) {
   return String(value)
@@ -205,6 +213,95 @@ function renderActions(state) {
         <select id="action-context-filter">${contextOptions}</select>
       </div>
       ${list}
+    </section>
+  `;
+}
+
+function renderEngageMeta(action, state) {
+  const projectName = resolveProjectName(action.projectId, state.projects);
+  const priority = action.priority ?? 'medium';
+  const energy = action.energy ?? 'medium';
+  const timeMinutes = action.timeMinutes ?? 15;
+  return `
+    <p class="engage-meta">
+      <span class="action-context">${escapeHtml(action.context)}</span>
+      ${projectName ? `<span class="action-project">${escapeHtml(projectName)}</span>` : ''}
+      <span class="action-energy">Energy: ${escapeHtml(energy)}</span>
+      <span class="action-duration">${escapeHtml(timeMinutes)} min</span>
+      <span class="action-priority">Priority: ${escapeHtml(priority)}</span>
+    </p>
+  `;
+}
+
+function renderEngage(state) {
+  const actions = getEngageActions(state, {
+    context: engageContext,
+    energy: engageEnergy,
+    timeMinutes: engageTime,
+  });
+  const best = actions[0] ?? null;
+  const rest = actions.slice(1);
+
+  const contextOptions = [
+    `<option value="all"${engageContext === 'all' ? ' selected' : ''}>All contexts</option>`,
+    ...state.settings.contexts.map((context) => (
+      `<option value="${escapeHtml(context)}"${engageContext === context ? ' selected' : ''}>${escapeHtml(context)}</option>`
+    )),
+  ].join('');
+
+  const energyOptions = ENGAGE_ENERGIES.map((value) => {
+    const label = value === 'any'
+      ? 'Any energy'
+      : `${value.charAt(0).toUpperCase()}${value.slice(1)} energy`;
+    return `<option value="${escapeHtml(value)}"${engageEnergy === value ? ' selected' : ''}>${escapeHtml(label)}</option>`;
+  }).join('');
+
+  const timeOptions = ENGAGE_TIME_OPTIONS.map((value) => {
+    const normalized = String(value);
+    const label = normalized === 'any' ? 'Any time' : `${normalized} min`;
+    return `<option value="${escapeHtml(normalized)}"${String(engageTime) === normalized ? ' selected' : ''}>${escapeHtml(label)}</option>`;
+  }).join('');
+
+  const bestCard = best
+    ? `<article class="engage-best" aria-labelledby="engage-best-title">
+        <p class="engage-best-label">Best next action</p>
+        <h3 id="engage-best-title" class="engage-best-title">${escapeHtml(best.title)}</h3>
+        ${renderEngageMeta(best, state)}
+        <button type="button" class="complete" data-item-id="${escapeHtml(best.id)}">Complete</button>
+      </article>`
+    : '';
+
+  const remaining = rest.length
+    ? `<h3 class="engage-list-heading">Other available actions</h3>
+      <ul class="engage-list">
+        ${rest.map((action) => `
+          <li class="engage-item">
+            <div class="engage-main">
+              <h4 class="engage-title">${escapeHtml(action.title)}</h4>
+              ${renderEngageMeta(action, state)}
+            </div>
+            <button type="button" class="complete" data-item-id="${escapeHtml(action.id)}">Complete</button>
+          </li>
+        `).join('')}
+      </ul>`
+    : (best
+      ? '<p class="empty">That is the best next action for these filters.</p>'
+      : '<p class="empty">No active actions match your context, energy and time. Adjust the filters or clarify something new.</p>');
+
+  return `
+    <section class="engage" aria-labelledby="engage-heading">
+      <h2 id="engage-heading">Engage</h2>
+      <p class="engage-intro">Choose the best next action for your context, energy and time.</p>
+      <div class="engage-filters">
+        <label for="engage-context-filter">Context</label>
+        <select id="engage-context-filter">${contextOptions}</select>
+        <label for="engage-energy-filter">Energy</label>
+        <select id="engage-energy-filter">${energyOptions}</select>
+        <label for="engage-time-filter">Time</label>
+        <select id="engage-time-filter">${timeOptions}</select>
+      </div>
+      ${bestCard}
+      ${remaining}
     </section>
   `;
 }
@@ -457,6 +554,7 @@ function render() {
       <nav aria-label="GTD sections">
         <a href="#inbox"${section === 'inbox' ? ' aria-current="page"' : ''}>Inbox (${state.inbox.length})</a>
         <a href="#actions"${section === 'actions' ? ' aria-current="page"' : ''}>Next Actions (${countOpenActions(state.actions)})</a>
+        <a href="#engage"${section === 'engage' ? ' aria-current="page"' : ''}>Engage</a>
         <a href="#projects"${section === 'projects' ? ' aria-current="page"' : ''}>Projects (${state.projects.length})</a>
         <a href="#waiting"${section === 'waiting' ? ' aria-current="page"' : ''}>Waiting For (${countOpenWaiting(state.waiting)})</a>
         <a href="#someday"${section === 'someday' ? ' aria-current="page"' : ''}>Someday/Maybe (${countOpenSomeday(state.someday)})</a>
@@ -601,6 +699,27 @@ function render() {
       const timeMinutes = Number(form.querySelector('[name="timeMinutes"]').value);
       if (updateActionPlanning(store, form.dataset.itemId, { priority, energy, timeMinutes })) {
         planningActionId = null;
+        render();
+      }
+    });
+  } else if (section === 'engage') {
+    view.innerHTML = renderEngage(state);
+    view.querySelector('#engage-context-filter').addEventListener('change', (event) => {
+      engageContext = event.target.value;
+      render();
+    });
+    view.querySelector('#engage-energy-filter').addEventListener('change', (event) => {
+      engageEnergy = event.target.value;
+      render();
+    });
+    view.querySelector('#engage-time-filter').addEventListener('change', (event) => {
+      engageTime = event.target.value;
+      render();
+    });
+    view.addEventListener('click', (event) => {
+      const completeButton = event.target.closest('button.complete');
+      if (completeButton) {
+        completeAction(store, completeButton.dataset.itemId);
         render();
       }
     });
