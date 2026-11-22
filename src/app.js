@@ -18,6 +18,12 @@ import {
   resolveProjectName,
   sortActionsNewestFirst,
 } from './actions.js';
+import {
+  buildReviewChecklist,
+  completeWeeklyReview,
+  getLastReview,
+  getRecentReviews,
+} from './review.js';
 
 const store = createStore();
 const app = document.querySelector('#app');
@@ -367,6 +373,45 @@ function renderCalendar(state) {
   `;
 }
 
+function renderReview(state) {
+  const checklist = buildReviewChecklist(state);
+  const lastReview = getLastReview(state);
+  const recentReviews = getRecentReviews(state, 5);
+
+  const checklistList = `<ul class="review-checklist">
+    ${checklist.map((item) => `
+      <li class="review-checklist-item">
+        <span class="review-checklist-label">${escapeHtml(item.label)}</span>
+        <span class="review-checklist-count">${item.count}</span>
+      </li>
+    `).join('')}
+  </ul>`;
+
+  const history = recentReviews.length
+    ? `<ul class="review-history-list">
+        ${recentReviews.map((review) => `
+          <li class="review-history-item">
+            <time class="review-history-time" datetime="${escapeHtml(review.completedAt)}">${escapeHtml(formatTimestamp(review.completedAt))}</time>
+            <span class="review-history-counts">Inbox ${review.snapshot.inbox} &middot; Actions ${review.snapshot.nextActions} &middot; Projects ${review.snapshot.projectsWithoutActions} &middot; Waiting ${review.snapshot.waitingFor} &middot; Someday ${review.snapshot.somedayMaybe} &middot; Calendar ${review.snapshot.calendar} &middot; Areas ${review.snapshot.areas}</span>
+          </li>
+        `).join('')}
+      </ul>`
+    : '<p class="empty">No reviews recorded yet.</p>';
+
+  return `
+    <section class="review" aria-labelledby="review-heading">
+      <h2 id="review-heading">Weekly Review</h2>
+      <p class="review-last">Last review: ${lastReview
+        ? `<time datetime="${escapeHtml(lastReview.completedAt)}">${escapeHtml(formatTimestamp(lastReview.completedAt))}</time>`
+        : 'No reviews yet.'}</p>
+      ${checklistList}
+      <button type="button" class="complete-review">Complete Weekly Review</button>
+      <h3>Recent reviews</h3>
+      ${history}
+    </section>
+  `;
+}
+
 function render() {
   const state = store.getState();
   const section = window.location.hash.slice(1) || 'inbox';
@@ -528,6 +573,14 @@ function render() {
         const row = reactivateButton.closest('.calendar-item');
         const context = row.querySelector('.calendar-context').value;
         reactivateCalendarItem(store, reactivateButton.dataset.itemId, context);
+        render();
+      }
+    });
+  } else if (section === 'review') {
+    view.innerHTML = renderReview(state);
+    view.addEventListener('click', (event) => {
+      if (event.target.closest('button.complete-review')) {
+        completeWeeklyReview(store);
         render();
       }
     });
