@@ -1,0 +1,11 @@
+{
+  "name": "gtd-planner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A Getting Things Done planner",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  }
+}
