@@ -88,6 +88,12 @@ body { margin: 0; background: var(--bg); color: var(--text); }
 .project-planning-form button { justify-self: start; padding: .4rem .8rem; border: 0; border-radius: .4rem; background: var(--accent); color: #fff; font: inherit; font-size: .85rem; cursor: pointer; }
 .project-planning-form button.cancel-project-plan { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
 button.plan-project { padding: .35rem .6rem; border: 0; border-radius: .35rem; background: var(--accent); color: #fff; font: inherit; font-size: .82rem; cursor: pointer; }
+.project-stalled { padding: .1rem .4rem; border-radius: .3rem; background: #b42318; color: #fff; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+button.complete-project,
+button.reopen-project { padding: .35rem .6rem; border: 0; border-radius: .35rem; background: var(--accent); color: #fff; font: inherit; font-size: .82rem; cursor: pointer; }
+button.reopen-project { background: var(--surface); color: var(--accent); border: 1px solid var(--accent); }
+.completed-projects { margin-top: 1.5rem; }
+.project-completed-at { margin: .25rem 0 0; color: var(--muted); font-size: .82rem; }
 .areas h2 { margin-top: 0; }
 .area-form { display: grid; gap: .5rem; margin-bottom: 1.5rem; padding: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: .4rem; }
 .area-form label { font-weight: 600; font-size: .9rem; }

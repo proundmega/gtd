@@ -43,7 +43,6 @@ export const DEFAULT_HORIZON_SETTINGS = Object.freeze({
 });
 
 const SETTING_KEYS = Object.freeze(['purpose', 'principles', 'vision']);
-const CLOSED_PROJECT_STATUSES = Object.freeze(['done', 'completed', 'archived', 'trashed']);
 
 function list(value) {
   return Array.isArray(value) ? value : [];
@@ -135,9 +134,11 @@ export function removeGoal(store, goalId) {
 }
 
 export function countOpenProjects(projects) {
-  return list(projects).filter((project) => (
-    !CLOSED_PROJECT_STATUSES.includes(project.status)
-  )).length;
+  const source = projects && typeof projects.getState === 'function'
+    ? projects.getState()
+    : projects;
+  const projectList = Array.isArray(source) ? source : list(source?.projects);
+  return projectList.filter((project) => project.status === 'active').length;
 }
 
 export function getHorizonCounts(source = {}) {
@@ -233,6 +234,9 @@ export const countHorizons = getHorizonCounts;
 export const countHorizonItems = getHorizonCounts;
 export const getHorizonCount = getHorizonCounts;
 export const horizonCounts = getHorizonCounts;
+
+export const countActiveProjects = countOpenProjects;
+export const activeProjectCount = countOpenProjects;
 
 export const getHorizons = buildHorizons;
 export const getHorizonRows = buildHorizons;
