@@ -1,6 +1,8 @@
 import { nextId } from './store.js';
 import { DEFAULT_ACTION_PLANNING } from './actions.js';
 
+export * from './areas.js';
+
 function findInboxItem(state, itemId) {
   return state.inbox.find((item) => item.id === itemId) ?? null;
 }
