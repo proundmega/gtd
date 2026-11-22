@@ -1,5 +1,7 @@
 import { nextId } from './store.js';
 
+export { clarifyToProject } from './projects.js';
+
 function findInboxItem(state, itemId) {
   return state.inbox.find((item) => item.id === itemId) ?? null;
 }
