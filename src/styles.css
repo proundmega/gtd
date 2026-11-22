@@ -111,3 +111,15 @@ body { margin: 0; background: var(--bg); color: var(--text); }
 .calendar-reactivate { display: flex; align-items: center; gap: .5rem; flex-shrink: 0; }
 .calendar-reactivate select { padding: .35rem .45rem; border: 1px solid var(--border); border-radius: .35rem; background: var(--surface); color: var(--text); font: inherit; font-size: .85rem; }
 .calendar-reactivate button { padding: .35rem .7rem; border: 0; border-radius: .35rem; background: var(--accent); color: #fff; font: inherit; font-size: .85rem; cursor: pointer; }
+.review h2 { margin-top: 0; }
+.review h3 { margin: 1.5rem 0 .5rem; font-size: 1rem; }
+.review-last { margin: 0 0 1rem; color: var(--muted); }
+.review-checklist { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: .5rem; }
+.review-checklist-item { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: .75rem .9rem; background: var(--surface); border: 1px solid var(--border); border-radius: .4rem; }
+.review-checklist-label { overflow-wrap: anywhere; }
+.review-checklist-count { flex-shrink: 0; min-width: 2rem; text-align: right; color: var(--accent); font-weight: 600; }
+.review button.complete-review { padding: .55rem 1rem; border: 0; border-radius: .4rem; background: var(--accent); color: #fff; font: inherit; cursor: pointer; }
+.review-history-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.review-history-item { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: .75rem .9rem; background: var(--surface); border: 1px solid var(--border); border-radius: .4rem; }
+.review-history-time { flex-shrink: 0; color: var(--accent); font-size: .85rem; }
+.review-history-counts { color: var(--muted); font-size: .8rem; overflow-wrap: anywhere; }
