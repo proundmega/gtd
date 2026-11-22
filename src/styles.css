@@ -58,6 +58,15 @@ body { margin: 0; background: var(--bg); color: var(--text); }
 .action-project { color: var(--muted); }
 .action-time { color: var(--muted); }
 .action-item button { flex-shrink: 0; padding: .35rem .7rem; border: 0; border-radius: .35rem; background: var(--accent); color: #fff; font: inherit; font-size: .85rem; cursor: pointer; }
+.action-controls { display: flex; flex-shrink: 0; gap: .4rem; }
+.action-controls button.plan { background: var(--surface); color: var(--accent); border: 1px solid var(--accent); }
+.action-planning { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .5rem; margin-top: .75rem; padding-top: .75rem; border-top: 1px solid var(--border); }
+.action-planning label { display: flex; flex-direction: column; gap: .2rem; color: var(--muted); font-size: .8rem; }
+.action-planning select,
+.action-planning input { padding: .35rem .45rem; border: 1px solid var(--border); border-radius: .35rem; background: var(--surface); color: var(--text); font: inherit; font-size: .85rem; }
+.action-planning input { width: 6rem; }
+.action-planning button { padding: .35rem .7rem; border: 0; border-radius: .35rem; background: var(--accent); color: #fff; font: inherit; font-size: .85rem; cursor: pointer; }
+.action-planning button.cancel-plan { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
 .projects h2 { margin-top: 0; }
 .project-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
 .project-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: .75rem .9rem; background: var(--surface); border: 1px solid var(--border); border-radius: .4rem; }

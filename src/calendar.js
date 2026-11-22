@@ -1,4 +1,5 @@
 import { nextId } from './store.js';
+import { DEFAULT_ACTION_PLANNING } from './actions.js';
 
 function findInboxItem(state, itemId) {
   return state.inbox.find((item) => item.id === itemId) ?? null;
@@ -66,6 +67,7 @@ export function reactivateCalendarItem(store, itemId, context) {
     status: 'active',
     createdAt: new Date().toISOString(),
     projectId: null,
+    ...DEFAULT_ACTION_PLANNING,
   };
 
   store.update((draft) => {

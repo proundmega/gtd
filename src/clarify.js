@@ -1,4 +1,5 @@
 import { nextId } from './store.js';
+import { DEFAULT_ACTION_PLANNING } from './actions.js';
 
 export { clarifyToProject } from './projects.js';
 export { clarifyToWaiting } from './waiting.js';
@@ -24,6 +25,7 @@ export function clarifyToNextAction(store, itemId, context) {
     status: 'active',
     createdAt: new Date().toISOString(),
     projectId: null,
+    ...DEFAULT_ACTION_PLANNING,
   };
 
   store.update((draft) => {
