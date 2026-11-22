@@ -16,3 +16,14 @@ body { margin: 0; background: var(--bg); color: var(--text); }
 .topbar a { color: var(--accent); text-decoration: none; font-size: .92rem; }
 .view { max-width: 60rem; margin: 0 auto; padding: 1.5rem; }
 .empty { color: var(--muted); }
+.topbar a[aria-current="page"] { font-weight: 600; }
+.inbox h2 { margin-top: 0; }
+.capture { margin-bottom: 1.5rem; }
+.capture label { display: block; margin-bottom: .35rem; font-weight: 600; }
+.capture-row { display: flex; gap: .5rem; }
+.capture input { flex: 1; min-width: 0; padding: .55rem .65rem; border: 1px solid var(--border); border-radius: .4rem; background: var(--surface); color: var(--text); font: inherit; }
+.capture button { padding: .55rem 1rem; border: 0; border-radius: .4rem; background: var(--accent); color: #fff; font: inherit; cursor: pointer; }
+.inbox-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.inbox-item { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: .75rem .9rem; background: var(--surface); border: 1px solid var(--border); border-radius: .4rem; }
+.inbox-title { overflow-wrap: anywhere; }
+.inbox-time { flex-shrink: 0; color: var(--muted); font-size: .8rem; }
