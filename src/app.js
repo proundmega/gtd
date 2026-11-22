@@ -1,6 +1,7 @@
 import { createStore } from './store.js';
 import { addInboxItem, sortInboxNewestFirst } from './inbox.js';
 import { clarifyToNextAction, trashInboxItem } from './clarify.js';
+import { clarifyToProject, countOpenProjectActions } from './projects.js';
 
 const store = createStore();
 const app = document.querySelector('#app');
@@ -32,6 +33,8 @@ function renderClarifyPanel(state, item) {
       <p>Is this actionable?</p>
       <p class="hint">If it takes under two minutes, do it now.</p>
       <form id="clarify-form" class="clarify-form" data-item-id="${escapeHtml(item.id)}">
+        <label for="clarify-outcome">Desired outcome</label>
+        <input id="clarify-outcome" name="outcome" type="text" placeholder="What does done look like?" autocomplete="off">
         <label for="clarify-context">Next action context</label>
         <select id="clarify-context" name="context">
           <option value="">Choose a context&hellip;</option>
@@ -39,6 +42,7 @@ function renderClarifyPanel(state, item) {
         </select>
         <div class="clarify-actions">
           <button type="submit">Next Action</button>
+          <button type="button" class="project" data-item-id="${escapeHtml(item.id)}">Project</button>
           <button type="button" class="trash" data-item-id="${escapeHtml(item.id)}">Trash</button>
         </div>
       </form>
@@ -82,6 +86,41 @@ function renderInbox(state) {
   `;
 }
 
+function renderProjects(state) {
+  const projects = [...state.projects].sort((a, b) => {
+    const aTime = Date.parse(a.createdAt) || 0;
+    const bTime = Date.parse(b.createdAt) || 0;
+    return bTime - aTime;
+  });
+
+  const list = projects.length
+    ? `<ul class="project-list">
+        ${projects.map((project) => {
+          const openActions = countOpenProjectActions(project, state.actions);
+          return `
+            <li class="project-item">
+              <div class="project-main">
+                <h3 class="project-title">${escapeHtml(project.title)}</h3>
+                <p class="project-outcome">${escapeHtml(project.outcome)}</p>
+              </div>
+              <span class="project-meta">
+                <span class="project-status">${escapeHtml(project.status)}</span>
+                <span class="project-open-actions">${openActions} open action${openActions === 1 ? '' : 's'}</span>
+              </span>
+            </li>
+          `;
+        }).join('')}
+      </ul>`
+    : '<p class="empty">No projects yet. Clarify an inbox item into a project to get started.</p>';
+
+  return `
+    <section class="projects" aria-labelledby="projects-heading">
+      <h2 id="projects-heading">Projects</h2>
+      ${list}
+    </section>
+  `;
+}
+
 function render() {
   const state = store.getState();
   const section = window.location.hash.slice(1) || 'inbox';
@@ -119,6 +158,18 @@ function render() {
         return;
       }
 
+      const projectButton = event.target.closest('button.project');
+      if (projectButton) {
+        const form = projectButton.closest('#clarify-form');
+        const outcome = form.querySelector('#clarify-outcome').value;
+        const context = form.querySelector('#clarify-context').value;
+        if (clarifyToProject(store, projectButton.dataset.itemId, outcome, context)) {
+          clarifyItemId = null;
+        }
+        render();
+        return;
+      }
+
       const trashButton = event.target.closest('button.trash');
       if (trashButton) {
         trashInboxItem(store, trashButton.dataset.itemId);
@@ -138,6 +189,8 @@ function render() {
         render();
       });
     }
+  } else if (section === 'projects') {
+    view.innerHTML = renderProjects(state);
   } else {
     view.innerHTML = '<p class="empty">Your GTD workspace is ready. Capture something to get started.</p>';
   }

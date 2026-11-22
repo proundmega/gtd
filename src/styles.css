@@ -35,7 +35,18 @@ body { margin: 0; background: var(--bg); color: var(--text); }
 .clarify-panel .hint { color: var(--muted); font-size: .88rem; }
 .clarify-form { display: grid; gap: .5rem; margin-top: .75rem; }
 .clarify-form label { font-weight: 600; font-size: .9rem; }
-.clarify-form select { padding: .5rem .6rem; border: 1px solid var(--border); border-radius: .4rem; background: var(--surface); color: var(--text); font: inherit; }
-.clarify-actions { display: flex; gap: .5rem; }
+.clarify-form select,
+.clarify-form input { padding: .5rem .6rem; border: 1px solid var(--border); border-radius: .4rem; background: var(--surface); color: var(--text); font: inherit; }
+.clarify-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 .clarify-actions button { padding: .5rem .9rem; border: 0; border-radius: .4rem; background: var(--accent); color: #fff; font: inherit; cursor: pointer; }
+.clarify-actions button.project { background: var(--surface); color: var(--accent); border: 1px solid var(--accent); }
 .clarify-actions button.trash { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+.projects h2 { margin-top: 0; }
+.project-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.project-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: .75rem .9rem; background: var(--surface); border: 1px solid var(--border); border-radius: .4rem; }
+.project-main { min-width: 0; }
+.project-title { margin: 0 0 .25rem; font-size: 1rem; overflow-wrap: anywhere; }
+.project-outcome { margin: 0; color: var(--muted); font-size: .9rem; overflow-wrap: anywhere; }
+.project-meta { display: flex; flex-direction: column; align-items: flex-end; gap: .2rem; flex-shrink: 0; font-size: .82rem; }
+.project-status { text-transform: capitalize; color: var(--accent); }
+.project-open-actions { color: var(--muted); }
