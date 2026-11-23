@@ -208,6 +208,9 @@ export function countOpenProjectActions(project, actions) {
     && action.status !== 'done'
     && action.status !== 'completed'
     && action.status !== 'trashed'
+    && action.status !== 'archived'
+    && !action.archived
+    && !action.archivedAt
   )).length;
 }
 

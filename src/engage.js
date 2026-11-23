@@ -53,7 +53,13 @@ function normalizePriority(value) {
 }
 
 export function filterActiveActions(actions) {
-  return asList(actions).filter((action) => action.status === 'active');
+  return asList(actions).filter((action) => (
+    action
+    && action.status === 'active'
+    && action.archived !== true
+    && !action.archivedAt
+    && String(action.status ?? '').toLowerCase() !== 'archived'
+  ));
 }
 
 export function filterActionsByEnergy(actions, energy = 'any') {
@@ -168,3 +174,11 @@ export const getTopAction = getBestNextAction;
 
 export { filterActionsByContext };
 export { completeAction } from './actions.js';
+export {
+  archiveAction,
+  restoreAction,
+  getArchivedActions,
+  countArchivedActions,
+  isArchived,
+  filterArchivedActions,
+} from './actions.js';
