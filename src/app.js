@@ -31,10 +31,13 @@ import {
 import {
   ACTION_ENERGIES,
   ACTION_PRIORITIES,
+  archiveAction,
   completeAction,
   countOpenActions,
   filterActionsByContext,
+  getArchivedActions,
   resolveProjectName,
+  restoreAction,
   sortActionsNewestFirst,
   updateActionPlanning,
 } from './actions.js';
@@ -192,6 +195,7 @@ function renderInbox(state) {
 function renderActions(state) {
   const openActions = state.actions.filter((action) => action.status === 'active');
   const visibleActions = sortActionsNewestFirst(filterActionsByContext(openActions, actionsContext));
+  const archivedActions = sortActionsNewestFirst(getArchivedActions(state));
 
   const contextOptions = [
     `<option value="all"${actionsContext === 'all' ? ' selected' : ''}>All contexts</option>`,
@@ -248,6 +252,25 @@ function renderActions(state) {
       : '<p class="empty">No open actions in this context.</p>')
     : '<p class="empty">No open actions yet. Clarify an inbox item into a Next Action to get started.</p>';
 
+  const archiveList = archivedActions.length
+    ? `<ul class="action-list archived-action-list">
+        ${archivedActions.map((action) => `
+          <li class="action-item archived-action-item">
+            <div class="action-main">
+              <h3 class="action-title">${escapeHtml(action.title)}</h3>
+              <p class="action-meta">
+                <span class="action-context">${escapeHtml(action.context)}</span>
+                <span class="action-status">Archived</span>
+              </p>
+            </div>
+            <div class="action-controls">
+              <button type="button" class="restore" data-item-id="${escapeHtml(action.id)}">Restore</button>
+            </div>
+          </li>
+        `).join('')}
+      </ul>`
+    : '<p class="empty">No archived actions yet.</p>';
+
   return `
     <section class="actions" aria-labelledby="actions-heading">
       <h2 id="actions-heading">Next Actions</h2>
@@ -256,6 +279,10 @@ function renderActions(state) {
         <select id="action-context-filter">${contextOptions}</select>
       </div>
       ${list}
+    </section>
+    <section class="archive" aria-labelledby="archive-heading">
+      <h2 id="archive-heading">Archive</h2>
+      ${archiveList}
     </section>
   `;
 }
@@ -993,6 +1020,13 @@ function render() {
       const completeButton = event.target.closest('button.complete');
       if (completeButton) {
         completeAction(store, completeButton.dataset.itemId);
+        render();
+        return;
+      }
+
+      const restoreButton = event.target.closest('button.restore');
+      if (restoreButton) {
+        restoreAction(store, restoreButton.dataset.itemId);
         render();
       }
     });
