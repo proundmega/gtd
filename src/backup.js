@@ -1,4 +1,5 @@
 import { emptyState } from './store.js';
+import { DEFAULT_THEME, normalizeTheme } from './theme.js';
 
 export const BACKUP_FILENAME = 'gtd-planner-backup.json';
 
@@ -72,7 +73,8 @@ function normalize(value) {
   const defaults = emptyState();
   const settings = isPlainObject(value.settings)
     ? { ...defaults.settings, ...value.settings }
-    : defaults.settings;
+    : { ...defaults.settings };
+  settings.theme = normalizeTheme(settings.theme) ?? DEFAULT_THEME;
 
   return {
     ...defaults,

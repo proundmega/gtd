@@ -238,3 +238,36 @@ button.reopen-project { background: var(--surface); color: var(--accent); border
 .import-backup { display: inline-block; padding: .55rem 1rem; border: 1px solid var(--accent); border-radius: .4rem; background: var(--surface); color: var(--accent); font: inherit; cursor: pointer; }
 .import-backup input, #import-backup { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .backup-error { margin: .75rem 0 0; color: #b42318; font-weight: 600; }
+
+.settings-theme { margin-top: 1.5rem; }
+.settings-theme h2 { margin-top: 0; }
+.theme-form { display: grid; gap: .5rem; padding: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: .4rem; }
+.theme-form label { font-weight: 600; font-size: .9rem; }
+.theme-form select { padding: .5rem .6rem; border: 1px solid var(--border); border-radius: .4rem; background: var(--surface); color: var(--text); font: inherit; text-transform: capitalize; }
+.theme-form button { justify-self: start; padding: .5rem .9rem; border: 0; border-radius: .4rem; background: var(--accent); color: #fff; font: inherit; cursor: pointer; }
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1419;
+  --surface: #1b2230;
+  --text: #e6edf3;
+  --muted: #9aa4b2;
+  --accent: #6ea8fe;
+  --border: #2d3748;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0f1419;
+    --surface: #1b2230;
+    --text: #e6edf3;
+    --muted: #9aa4b2;
+    --accent: #6ea8fe;
+    --border: #2d3748;
+  }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
