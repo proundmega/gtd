@@ -66,6 +66,12 @@ import {
   removeContext,
 } from './contexts.js';
 import {
+  THEMES,
+  getTheme,
+  setTheme,
+  applyTheme,
+} from './theme.js';
+import {
   BACKUP_FILENAME,
   exportBackup,
   getBackupError,
@@ -393,6 +399,10 @@ function renderAreas(state) {
 
 function renderContexts(state) {
   const contexts = buildContexts(state);
+  const theme = getTheme(state);
+  const themeOptions = THEMES.map((value) => (
+    `<option value="${escapeHtml(value)}"${value === theme ? ' selected' : ''}>${escapeHtml(value)}</option>`
+  )).join('');
 
   const list = contexts.length
     ? `<ul class="context-list">
@@ -419,6 +429,16 @@ function renderContexts(state) {
         <button type="submit">Add Context</button>
       </form>
       ${list}
+    </section>
+    <section class="settings-theme" aria-labelledby="theme-heading">
+      <h2 id="theme-heading">Settings: Theme</h2>
+      <form id="theme-form" class="theme-form">
+        <label for="theme-choice">Theme</label>
+        <select id="theme-choice" name="theme">
+          ${themeOptions}
+        </select>
+        <button type="submit">Save Theme</button>
+      </form>
     </section>
   `;
 }
@@ -847,6 +867,7 @@ function renderReview(state) {
 
 function render() {
   const state = store.getState();
+  applyTheme(state.settings?.theme);
   const section = window.location.hash.slice(1) || 'inbox';
   if (section !== 'contexts' && section !== 'settings') contextError = '';
 
@@ -1114,6 +1135,25 @@ function render() {
       }
       input.value = '';
     });
+    const themeForm = view.querySelector('#theme-form');
+    const themeSelect = view.querySelector('#theme-choice');
+    if (themeForm) {
+      themeForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const value = themeSelect ? themeSelect.value : '';
+        setTheme(store, value);
+        applyTheme(store.getState().settings.theme);
+        render();
+      });
+    }
+    if (themeSelect) {
+      themeSelect.addEventListener('change', () => {
+        setTheme(store, themeSelect.value);
+        applyTheme(store.getState().settings.theme);
+        render();
+      });
+    }
+
     view.addEventListener('click', (event) => {
       const removeButton = event.target.closest('button.remove-context');
       if (!removeButton) return;

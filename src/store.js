@@ -1,3 +1,5 @@
+import { DEFAULT_THEME, normalizeTheme } from './theme.js';
+
 export const STORAGE_KEY = 'gtd-planner-v1';
 
 export const DEFAULT_CONTEXTS = ['@computer', '@phone', '@errands', '@home', '@agenda'];
@@ -16,6 +18,7 @@ export function emptyState() {
     reviews: [],
     settings: {
       contexts: [...DEFAULT_CONTEXTS],
+      theme: 'system',
       lastReviewAt: null,
       purpose: '',
       principles: '',
@@ -40,7 +43,9 @@ export function createStore(storage = globalThis.localStorage) {
   if (raw) {
     try {
       const parsed = JSON.parse(raw);
-      state = { ...state, ...parsed, settings: { ...state.settings, ...(parsed.settings || {}) } };
+      const mergedSettings = { ...state.settings, ...(parsed.settings || {}) };
+      mergedSettings.theme = normalizeTheme(mergedSettings.theme) ?? DEFAULT_THEME;
+      state = { ...state, ...parsed, settings: mergedSettings };
     } catch {
       state = emptyState();
     }
